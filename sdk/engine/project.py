@@ -106,15 +106,19 @@ class Project:
                  s3_backend: str = None,
                  entry_point_path: str = None
                  ):
+        self._mode = Stage[config(BrickFlowEnvVars.BRICKFLOW_MODE.value, default=Stage.execute.value)]
+
         self._entry_point_path = entry_point_path
         self._s3_backend = s3_backend
-        git_ref_default = git_reference if git_reference is not None else f"commit/{get_current_commit()}"
+        if self._mode == Stage.deploy:
+            git_ref_default = git_reference if git_reference is not None else f"commit/{get_current_commit()}"
+        else:
+            git_ref_default = git_reference
         self._git_reference = config(BrickFlowEnvVars.BRICKFLOW_GIT_REF.value, default=git_ref_default)
         self._provider = config(BrickFlowEnvVars.BRICKFLOW_GIT_PROVIDER.value, default=provider)
         self._git_repo = config(BrickFlowEnvVars.BRICKFLOW_GIT_REPO.value, default=git_repo)
         self._debug_execute_task = debug_execute_task
         self._debug_execute_workflow = debug_execute_workflow
-        self._mode = Stage[config(BrickFlowEnvVars.BRICKFLOW_MODE.value, default=Stage.execute.value)]
         self._name = name
         # self._app: Optional['App'] = None
         self._project = None
