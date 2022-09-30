@@ -3,6 +3,7 @@ from typing import Optional, Dict
 
 from decouple import config
 
+from sdk.engine.context import ctx, BrickflowInternalVariables
 from sdk.engine.utils import wraps_keyerror
 from sdk.engine.workflow import Workflow
 
@@ -73,8 +74,8 @@ class Stage(Enum):
 class Project:
     def __init__(self, name,
                  mode: Stage = Stage[config("BRICKFLOW_MODE", "execute")],
-                 execute_workflow: str = None,
-                 execute_task: str = None,
+                 debug_execute_workflow: str = None,
+                 debug_execute_task: str = None,
                  git_repo: str = None,
                  provider: str = None,
                  git_reference: str = None,
@@ -86,8 +87,8 @@ class Project:
         self._git_reference = git_reference
         self._provider = provider
         self._git_repo = git_repo
-        self._execute_task = execute_task
-        self._execute_workflow = execute_workflow
+        self._debug_execute_task = debug_execute_task
+        self._debug_execute_workflow = debug_execute_workflow
         self._mode = mode
         self._name = name
         self._app: Optional['App'] = None
@@ -112,6 +113,8 @@ class Project:
                                       self._name, )
             app.synth()
         if self._mode == Stage.execute:
-            workflow = self._project.get_workflow(self._execute_workflow)
-            task = workflow.get_task(self._execute_task)
+            wf_id = ctx.dbutils_widget_get_or_else(BrickflowInternalVariables.workflow_id, self._debug_execute_workflow)
+            t_id = ctx.dbutils_widget_get_or_else(BrickflowInternalVariables.task_id, self._debug_execute_task)
+            workflow = self._project.get_workflow(wf_id)
+            task = workflow.get_task(t_id)
             task.execute()

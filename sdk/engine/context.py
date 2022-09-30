@@ -24,12 +24,6 @@ class BrickflowInternalVariables:
     task_id = "brickflow_internal_task_name"
 
 
-def dbutils_widget_get_or_else(dbutils, key, default):
-    try:
-        return dbutils.widgets.get(key)
-    except Exception as e:
-        return default
-
 
 def bind_variable(builtin: BrickflowBuiltInTaskVariables):
     def wrapper(f):
@@ -38,7 +32,7 @@ def bind_variable(builtin: BrickflowBuiltInTaskVariables):
             _self: Context = args[0]
             debug = kwargs["debug"]
             if _self.dbutils is not None:
-                return dbutils_widget_get_or_else(_self.dbutils, builtin.value, debug)
+                return _self.dbutils_widget_get_or_else(builtin.value, debug)
             return debug
 
         return func
@@ -86,6 +80,12 @@ class Context:
     def dbutils(self):
         return self._dbutils
 
+    def dbutils_widget_get_or_else(self, key, default):
+        try:
+            return self.dbutils.widgets.get(key)
+        except Exception as e:
+            return default
+
     def _get_context_mode(self):
         try:
             from pyspark.dbutils import DBUtils
@@ -96,3 +96,6 @@ class Context:
         except ImportError as e:
             print(str(e))
             return ContextMode.not_databricks
+
+
+ctx = Context()
