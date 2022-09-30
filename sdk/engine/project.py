@@ -95,7 +95,7 @@ class Stage(Enum):
 
 class Project:
     def __init__(self, name,
-                 mode: Stage = Stage[config(BrickFlowEnvVars.BRICKFLOW_MODE.value, "execute")],
+                 mode: Stage = Stage[config(BrickFlowEnvVars.BRICKFLOW_MODE.value, default="execute")],
                  debug_execute_workflow: str = None,
                  debug_execute_task: str = None,
                  git_repo: str = None,
