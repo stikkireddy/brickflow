@@ -126,6 +126,9 @@ class Project:
         # return _Project()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        print(self._mode.value == Stage.deploy.value)
+        print(self._mode.value == Stage.execute.value)
+        print(self._mode.value, Stage.deploy.value, Stage.execute.value)
         if self._mode.value == Stage.deploy.value:
             # local import to avoid node req
             from cdktf import App
