@@ -28,6 +28,7 @@ class BrickFlowEnvVars(Enum):
     BRICKFLOW_GIT_REF = "BRICKFLOW_GIT_REF"
     BRICKFLOW_GIT_PROVIDER = "BRICKFLOW_GIT_PROVIDER"
 
+# TODO: Logging
 
 class _Project:
     # The goal of a project is to contain a bunch of workflows and convert this to a stack.
@@ -68,6 +69,8 @@ class _Project:
         stack = TerraformStack(app, id_)
         DatabricksProvider(
             stack, "Databricks",
+            host=config("DATABRICKS_HOST", default=None),
+            token=config("DATABRICKS_TOKEN", default=None)
         )
         for workflow_name, workflow in self._workflows.items():
             ref_type = self._git_reference.split("/")[0]
