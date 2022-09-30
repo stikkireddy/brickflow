@@ -95,7 +95,6 @@ class Stage(Enum):
 
 class Project:
     def __init__(self, name,
-                 mode: Stage = Stage.execute,
                  debug_execute_workflow: str = None,
                  debug_execute_task: str = None,
                  git_repo: str = None,
@@ -126,9 +125,6 @@ class Project:
         # return _Project()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        print(self._mode.value == Stage.deploy.value)
-        print(self._mode.value == Stage.execute.value)
-        print(self._mode.value, Stage.deploy.value, Stage.execute.value)
         if self._mode.value == Stage.deploy.value:
             # local import to avoid node req
             from cdktf import App
