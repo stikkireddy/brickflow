@@ -1,5 +1,5 @@
 import functools
-from typing import Callable, List, Optional, Dict
+from typing import Callable, List, Optional, Dict, Union
 
 from sdk.engine.compute import Compute
 from sdk.engine.task import TaskNotFoundError, AnotherActiveTaskError, Task, TaskType, TaskAlreadyExistsError
@@ -60,7 +60,7 @@ class Workflow:
 
     def task(self, name: str = None, compute: Optional[Compute] = None,
              task_type: Optional[TaskType] = TaskType.NOTEBOOK,
-             depends_on: Optional[List[Callable]] = None):
+             depends_on: Optional[List[Union[Callable, str]]] = None):
 
         def task_wrapper(f: Callable):
             task_id = name or f.__name__

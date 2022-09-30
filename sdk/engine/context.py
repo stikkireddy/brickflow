@@ -24,7 +24,6 @@ class BrickflowInternalVariables:
     task_id = "brickflow_internal_task_name"
 
 
-
 def bind_variable(builtin: BrickflowBuiltInTaskVariables):
     def wrapper(f):
         @functools.wraps(f)
@@ -94,7 +93,6 @@ class Context:
             self._dbutils = DBUtils(spark)
             return ContextMode.databricks
         except ImportError as e:
-            print(str(e))
             return ContextMode.not_databricks
 
 

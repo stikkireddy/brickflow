@@ -1,8 +1,9 @@
 from enum import Enum
-from typing import Optional, Dict
+from typing import Optional, Dict, Callable
 
 from decouple import config
 
+from sdk.engine import is_git_dirty
 from sdk.engine.context import ctx, BrickflowInternalVariables
 from sdk.engine.utils import wraps_keyerror
 from sdk.engine.workflow import Workflow
@@ -14,6 +15,18 @@ class WorkflowAlreadyExistsError(Exception):
 
 class WorkflowNotFoundError(Exception):
     pass
+
+
+class GitRepoIsDirtyError(Exception):
+    pass
+
+
+class BrickFlowEnvVars(Enum):
+    BRICKFLOW_FORCE_DEPLOY = "BRICKFLOW_FORCE_DEPLOY"
+    BRICKFLOW_MODE = "BRICKFLOW_MODE"
+    BRICKFLOW_GIT_REPO = "BRICKFLOW_GIT_REPO"
+    BRICKFLOW_GIT_REF = "BRICKFLOW_GIT_REF"
+    BRICKFLOW_GIT_PROVIDER = "BRICKFLOW_GIT_PROVIDER"
 
 
 class _Project:
@@ -45,9 +58,12 @@ class _Project:
         return self._workflows[workflow_id]
 
     def generate_tf(self, app, id_):
+        if is_git_dirty() and config(BrickFlowEnvVars.BRICKFLOW_FORCE_DEPLOY.value, default="false") == "false":
+            raise GitRepoIsDirtyError("Please commit all your changes before attempting to deploy.")
+
         # Avoid node reqs
         from cdktf import TerraformStack
-        from sdk.tf.databricks import DatabricksProvider, Job, JobGitSource, JobTask
+        from sdk.tf.databricks import DatabricksProvider, Job, JobGitSource, JobTask, JobTaskDependsOn
 
         stack = TerraformStack(app, id_)
         DatabricksProvider(
@@ -59,10 +75,16 @@ class _Project:
             git_conf = JobGitSource(url=self._git_repo, provider=self._provider, **{ref_type: ref_value})
             tasks = []
             for task_name, task in workflow.tasks.items():
-                tasks.append(JobTask(**{
-
-                    task.task_type: task.get_tf_obj(self._entry_point_path),
-                }, task_key=task_name, existing_cluster_id=workflow.existing_cluster_id))
+                depends_on = [JobTaskDependsOn(task_key=f.__name__ if isinstance(f, Callable) else f)
+                              for f in task.depends_on]
+                tasks.append(JobTask(
+                    **{
+                        task.task_type: task.get_tf_obj(self._entry_point_path),
+                    },
+                    depends_on=depends_on,
+                    task_key=task_name,
+                    existing_cluster_id=workflow.existing_cluster_id))
+            tasks.sort(key=lambda t: t.task_key)
             Job(stack, id_=workflow_name, name=workflow_name, task=tasks, git_source=git_conf)
 
 
@@ -73,7 +95,7 @@ class Stage(Enum):
 
 class Project:
     def __init__(self, name,
-                 mode: Stage = Stage[config("BRICKFLOW_MODE", "execute")],
+                 mode: Stage = Stage[config(BrickFlowEnvVars.BRICKFLOW_MODE.value, "execute")],
                  debug_execute_workflow: str = None,
                  debug_execute_task: str = None,
                  git_repo: str = None,
@@ -84,14 +106,14 @@ class Project:
                  ):
         self._entry_point_path = entry_point_path
         self._s3_backend = s3_backend
-        self._git_reference = git_reference
-        self._provider = provider
-        self._git_repo = git_repo
+        self._git_reference = config(BrickFlowEnvVars.BRICKFLOW_GIT_REF.value, default=git_reference)
+        self._provider = config(BrickFlowEnvVars.BRICKFLOW_GIT_PROVIDER.value, default=provider)
+        self._git_repo = config(BrickFlowEnvVars.BRICKFLOW_GIT_REPO.value, default=git_repo)
         self._debug_execute_task = debug_execute_task
         self._debug_execute_workflow = debug_execute_workflow
         self._mode = mode
         self._name = name
-        self._app: Optional['App'] = None
+        # self._app: Optional['App'] = None
         self._project = None
 
     def __enter__(self):

@@ -1,11 +1,10 @@
 import inspect
 import numbers
 from enum import Enum
-from typing import Callable, List, Dict, Union
+from typing import Callable, List, Dict, Union, Optional
 
 from sdk.engine.compute import Compute
 from sdk.engine.context import BrickflowBuiltInTaskVariables, BrickflowInternalVariables
-
 
 
 class TaskNotFoundError(Exception):
@@ -49,11 +48,11 @@ class InvalidTaskSignatureDefinition(Exception):
 class Task:
 
     def __init__(self, task_id, task_func: Callable, workflow: 'Workflow', compute: 'Compute',
-                 depends_on: List[str] = None,
+                 depends_on: Optional[List[Union[Callable, str]]] = None,
                  task_type: TaskType = TaskType.NOTEBOOK):
         self._task_type = task_type
         self._compute = compute
-        self._depends_on = depends_on
+        self._depends_on = depends_on or []
         self._workflow = workflow
         self._task_func = task_func
         self._task_id = task_id
@@ -61,6 +60,10 @@ class Task:
     @property
     def task_type(self) -> str:
         return self._task_type.value
+
+    @property
+    def depends_on(self) -> Optional[List[Union[Callable, str]]]:
+        return self._depends_on
 
     @property
     def builtin_notebook_params(self):
