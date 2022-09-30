@@ -41,8 +41,10 @@ def bind_variable(builtin: BrickflowBuiltInTaskVariables):
 class Context:
 
     def __init__(self):
-        self._mode = self._get_context_mode()
+        # Order of init matters todo: fix this
         self._dbutils: Optional[Any] = None
+
+        self._mode = self._get_context_mode()
 
     @bind_variable(BrickflowBuiltInTaskVariables.task_key)
     def task_key(self, *, debug=None):
