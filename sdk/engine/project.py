@@ -126,15 +126,14 @@ class Project:
         # return _Project()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-
-        if self._mode == Stage.deploy:
+        if self._mode.value == Stage.deploy.value:
             # local import to avoid node req
             from cdktf import App
             app = App()
             self._project.generate_tf(app,
                                       self._name, )
             app.synth()
-        if self._mode == Stage.execute:
+        if self._mode.value == Stage.execute.value:
             wf_id = ctx.dbutils_widget_get_or_else(BrickflowInternalVariables.workflow_id, self._debug_execute_workflow)
             t_id = ctx.dbutils_widget_get_or_else(BrickflowInternalVariables.task_id, self._debug_execute_task)
             workflow = self._project.get_workflow(wf_id)
