@@ -59,10 +59,10 @@ class _Project:
             tasks = []
             for task_name, task in workflow.tasks.items():
                 tasks.append(JobTask(**{
-                    task.task_type: task.get_tf_obj(self._entry_point_path),
-                }, existing_cluster_id=workflow.existing_cluster_id))
-            Job(stack, id_=workflow_name, name=workflow_name, task=tasks, git_source=git_conf)
 
+                    task.task_type: task.get_tf_obj(self._entry_point_path),
+                }, task_key=task_name, existing_cluster_id=workflow.existing_cluster_id))
+            Job(stack, id_=workflow_name, name=workflow_name, task=tasks, git_source=git_conf)
 
 
 class Stage(Enum):
@@ -107,9 +107,10 @@ class Project:
         if self._mode == Stage.deploy:
             # local import to avoid node req
             from cdktf import App
-            self._project.generate_tf(App(),
-                                      self._name,)
-            self._app.synth()
+            app = App()
+            self._project.generate_tf(app,
+                                      self._name, )
+            app.synth()
         if self._mode == Stage.execute:
             workflow = self._project.get_workflow(self._execute_workflow)
             task = workflow.get_task(self._execute_task)

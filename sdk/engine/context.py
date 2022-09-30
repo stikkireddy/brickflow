@@ -80,7 +80,7 @@ class Context:
         try:
             from pyspark.dbutils import DBUtils
             from pyspark.sql import SparkSession
-            spark = SparkSession.getActiveSparkSession()
+            spark = SparkSession.getActiveSession()
             self._dbutils = DBUtils(spark)
             return ContextMode.databricks
         except ImportError as e:
