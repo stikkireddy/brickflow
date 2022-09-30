@@ -1,8 +1,3 @@
-
-
-from sdk.tf.databricks import DataDatabricksNodeType, DataDatabricksSparkVersion
-
-
 class Compute:
 
     def __init__(self, compute_id,
@@ -64,6 +59,7 @@ class Compute:
 
     def to_runtime_tf(self, stack: 'TerraformStack'):
         from cdktf import TerraformStack
+        from sdk.tf.databricks import DataDatabricksNodeType, DataDatabricksSparkVersion
         stack: TerraformStack
         return DataDatabricksSparkVersion(stack,
                                           id_=f"{self.compute_id}_runtime",
