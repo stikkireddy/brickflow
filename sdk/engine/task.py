@@ -64,7 +64,8 @@ class Task:
 
     @property
     def builtin_notebook_params(self):
-        return {i.value: f"{{{i.name}}}" for i in BrickflowBuiltInTaskVariables}
+        # 2 braces to escape for 1
+        return {i.value: f"{{{{{i.name}}}}}" for i in BrickflowBuiltInTaskVariables}
 
     @property
     def name(self):
@@ -82,7 +83,7 @@ class Task:
         if self._task_type == TaskType.NOTEBOOK:
             return JobTaskNotebookTask(
                 notebook_path=entrypoint,
-                base_parameters={**self.builtin_notebook_params, **self.builtin_notebook_params,
+                base_parameters={**self.builtin_notebook_params, **self.brickflow_default_params,
                                  **(self.custom_task_parameters or {})}
             )
 

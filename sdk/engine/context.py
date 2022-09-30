@@ -29,6 +29,8 @@ def bind_variable(builtin: BrickflowBuiltInTaskVariables):
         @functools.wraps(f)
         def func(*args, **kwargs):
             _self: Context = args[0]
+            print(_self.dbutils)
+            print(builtin.value)
             if _self.dbutils is not None:
                 return _self._dbutils.widgets.get(builtin.value)
             return kwargs["default"]
