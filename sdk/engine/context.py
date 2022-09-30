@@ -24,14 +24,22 @@ class BrickflowInternalVariables:
     task_id = "brickflow_internal_task_name"
 
 
+def dbutils_widget_get_or_else(dbutils, key, default):
+    try:
+        return dbutils.widgets.get(key)
+    except Exception as e:
+        return default
+
+
 def bind_variable(builtin: BrickflowBuiltInTaskVariables):
     def wrapper(f):
         @functools.wraps(f)
         def func(*args, **kwargs):
             _self: Context = args[0]
+            debug = kwargs["debug"]
             if _self.dbutils is not None:
-                return _self._dbutils.widgets.get(builtin.value)
-            return kwargs["default"]
+                return dbutils_widget_get_or_else(_self.dbutils, builtin.value, debug)
+            return debug
 
         return func
 
