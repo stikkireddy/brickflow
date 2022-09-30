@@ -18,8 +18,9 @@ setup(
     },
     setup_requires=['setuptools_scm'],
     install_requires=[
-        'cdktf>=0.12.2'
-        'setuptools==45'
+        'cdktf>=0.12.2',
+        'setuptools==45',
+        'python-decouple>=3.6'
     ] ,
     package_data={'': ['export.yaml']},
     entry_points='''
