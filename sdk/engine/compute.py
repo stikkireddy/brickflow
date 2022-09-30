@@ -1,4 +1,4 @@
-from cdktf import TerraformStack
+
 
 from sdk.tf.databricks import DataDatabricksNodeType, DataDatabricksSparkVersion
 
@@ -46,7 +46,9 @@ class Compute:
         self.photon_worker = photon or photon_worker
         self.category = category
 
-    def to_node_tf(self, stack: TerraformStack):
+    def to_node_tf(self, stack: 'TerraformStack'):
+        from cdktf import TerraformStack
+        stack: TerraformStack
         return DataDatabricksNodeType(stack,
                                       id_=f"{self.compute_id}_node",
                                       min_memory_gb=self.min_memory_gb_per_worker,
@@ -60,7 +62,9 @@ class Compute:
                                       support_port_forwarding=self.support_port_forwarding
                                       )
 
-    def to_runtime_tf(self, stack: TerraformStack):
+    def to_runtime_tf(self, stack: 'TerraformStack'):
+        from cdktf import TerraformStack
+        stack: TerraformStack
         return DataDatabricksSparkVersion(stack,
                                           id_=f"{self.compute_id}_runtime",
                                           latest=self.latest,

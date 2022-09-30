@@ -5,7 +5,7 @@ from typing import Callable, List, Dict, Union
 
 from sdk.engine.compute import Compute
 from sdk.engine.context import BrickflowBuiltInTaskVariables, BrickflowInternalVariables
-from sdk.tf.databricks import JobTaskNotebookTask
+
 
 
 class TaskNotFoundError(Exception):
@@ -78,6 +78,7 @@ class Task:
         }
 
     def get_tf_obj(self, entrypoint):
+        from sdk.tf.databricks import JobTaskNotebookTask
         if self._task_type == TaskType.NOTEBOOK:
             return JobTaskNotebookTask(
                 notebook_path=entrypoint,

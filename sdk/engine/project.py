@@ -1,14 +1,10 @@
-import builtins
 from enum import Enum
 from typing import Optional, Dict
 
-import constructs
-from cdktf import TerraformStack, App
 from decouple import config
 
 from sdk.engine.utils import wraps_keyerror
 from sdk.engine.workflow import Workflow
-from sdk.tf.databricks import DatabricksProvider, Job, JobGitSource, JobTask
 
 
 class WorkflowAlreadyExistsError(Exception):
@@ -19,24 +15,20 @@ class WorkflowNotFoundError(Exception):
     pass
 
 
-class _Project(TerraformStack):
+class _Project:
     # The goal of a project is to contain a bunch of workflows and convert this to a stack.
-    def __init__(self, scope: constructs.Construct, id: builtins.str,
+    def __init__(self,
                  git_repo: str = None,
                  provider: str = None,
                  git_reference: str = None,
                  s3_backend: str = None,
                  entry_point_path: str = None
                  ):
-        super().__init__(scope, id)
         self._entry_point_path = entry_point_path
         self._s3_backend = s3_backend
         self._git_reference = git_reference
         self._provider = provider
         self._git_repo = git_repo
-        DatabricksProvider(
-            self, "Databricks",
-        )
         self._workflows: Dict[str, Workflow] = {}
 
     def add_workflow(self, workflow: Workflow):
@@ -51,7 +43,15 @@ class _Project(TerraformStack):
     def get_workflow(self, workflow_id):
         return self._workflows[workflow_id]
 
-    def generate_tf(self):
+    def generate_tf(self, app, id_):
+        # Avoid node reqs
+        from cdktf import TerraformStack
+        from sdk.tf.databricks import DatabricksProvider, Job, JobGitSource, JobTask
+
+        stack = TerraformStack(app, id_)
+        DatabricksProvider(
+            stack, "Databricks",
+        )
         for workflow_name, workflow in self._workflows.items():
             ref_type = self._git_reference.split("/")[0]
             ref_value = "/".join(self._git_reference.split("/")[1:])
@@ -61,7 +61,7 @@ class _Project(TerraformStack):
                 tasks.append(JobTask(**{
                     task.task_type: task.get_tf_obj(self._entry_point_path),
                 }, existing_cluster_id=workflow.existing_cluster_id))
-            Job(self, id_=workflow_name, name=workflow_name, task=tasks, git_source=git_conf)
+            Job(stack, id_=workflow_name, name=workflow_name, task=tasks, git_source=git_conf)
 
 
 
@@ -90,14 +90,11 @@ class Project:
         self._execute_workflow = execute_workflow
         self._mode = mode
         self._name = name
-        self._app: Optional[App] = None
+        self._app: Optional['App'] = None
         self._project = None
 
     def __enter__(self):
-        self._app = App()
-        self._project = _Project(self._app,
-                                 self._name,
-                                 self._git_repo,
+        self._project = _Project(self._git_repo,
                                  self._provider,
                                  self._git_reference,
                                  self._s3_backend,
@@ -106,9 +103,12 @@ class Project:
         # return _Project()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        print(self._mode)
+
         if self._mode == Stage.deploy:
-            self._project.generate_tf()
+            # local import to avoid node req
+            from cdktf import App
+            self._project.generate_tf(App(),
+                                      self._name,)
             self._app.synth()
         if self._mode == Stage.execute:
             workflow = self._project.get_workflow(self._execute_workflow)

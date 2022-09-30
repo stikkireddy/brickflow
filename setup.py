@@ -12,7 +12,7 @@ setup(
     long_description_content_type="text/markdown",
     url="",
     license="",
-    packages=find_packages(exclude=['tests', 'tests.*', ]),
+    packages=find_packages(include=["*"], exclude=['tests', 'tests.*', ]),
     use_scm_version={
         "local_scheme": "dirty-tag"
     },
@@ -22,7 +22,7 @@ setup(
         'setuptools>=45',
         'python-decouple>=3.6'
     ] ,
-    package_data={'': ['export.yaml']},
+    package_data={'': ['databricks_databricks@0.0.0.jsii.tgz', 'py.typed']},
     entry_points='''
         [console_scripts]
     ''',
