@@ -1,9 +1,9 @@
 from enum import Enum
-from typing import Optional, Dict, Callable
+from typing import Dict, Callable
 
 from decouple import config
 
-from sdk.engine import is_git_dirty
+from sdk.engine import is_git_dirty, get_current_commit
 from sdk.engine.context import ctx, BrickflowInternalVariables
 from sdk.engine.utils import wraps_keyerror
 from sdk.engine.workflow import Workflow
@@ -105,7 +105,8 @@ class Project:
                  ):
         self._entry_point_path = entry_point_path
         self._s3_backend = s3_backend
-        self._git_reference = config(BrickFlowEnvVars.BRICKFLOW_GIT_REF.value, default=git_reference)
+        git_ref_default = git_reference if git_reference is not None else f"commit/{get_current_commit()}"
+        self._git_reference = config(BrickFlowEnvVars.BRICKFLOW_GIT_REF.value, default=git_ref_default)
         self._provider = config(BrickFlowEnvVars.BRICKFLOW_GIT_PROVIDER.value, default=provider)
         self._git_repo = config(BrickFlowEnvVars.BRICKFLOW_GIT_REPO.value, default=git_repo)
         self._debug_execute_task = debug_execute_task
