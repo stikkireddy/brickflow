@@ -7,8 +7,68 @@ from brickflow.engine import ROOT_NODE
 from brickflow.engine.compute import Compute
 from brickflow.engine.context import ctx
 from brickflow.engine.task import TaskNotFoundError, AnotherActiveTaskError, Task, TaskType, TaskAlreadyExistsError, \
-    BrickflowTriggerRule, UnsupportedBrickflowTriggerRuleError
+    BrickflowTriggerRule, UnsupportedBrickflowTriggerRuleError, TaskSettings
 from brickflow.engine.utils import wraps_keyerror
+
+
+class ScimEntity:
+    def __init__(self, name):
+        self._name = name
+
+    @property
+    def name(self):
+        return self._name
+
+    def __eq__(self, other):
+        return self.name == other.name
+
+    def __ne__(self, other):
+        return self.name != other
+
+    def __hash__(self):
+        return hash(self.__class__.__name__ + self.name)
+
+    def to_access_control(self):
+        pass
+
+
+class User(ScimEntity):
+    def to_access_control(self):
+        return {"user_name": self.name}
+
+
+class Group(ScimEntity):
+    def to_access_control(self):
+        return {"group_name": self.name}
+
+
+class ServicePrincipal(ScimEntity):
+    def to_access_control(self):
+        return {"service_principal_name": self.name}
+
+
+class WorkflowPermissions:
+    def __init__(self,
+                 owner: User = None,
+                 can_manage_run: List[ScimEntity] = None,
+                 can_view: List[ScimEntity] = None,
+                 can_manage: List[ScimEntity] = None):
+        self.owner = owner
+        self.can_manage = can_manage or []
+        self.can_view = can_view or []
+        self.can_manage_run = can_manage_run or []
+
+    def to_access_controls(self):
+        access_controls = []
+        if self.owner is not None:
+            access_controls.append({"permission_level": "IS_OWNER", **self.owner.to_access_control()})
+        for principal in list(set(self.can_manage)):
+            access_controls.append({"permission_level": "CAN_MANAGE", **principal.to_access_control()})
+        for principal in list(set(self.can_manage_run)):
+            access_controls.append({"permission_level": "CAN_MANAGE", **principal.to_access_control()})
+        for principal in list(set(self.can_view)):
+            access_controls.append({"permission_level": "CAN_MANAGE", **principal.to_access_control()})
+        return access_controls
 
 
 class Workflow:
@@ -18,6 +78,10 @@ class Workflow:
                  compute: List[Compute] = None,
                  existing_cluster=None,
                  airflow_110_dag: 'DAG' = None,
+                 default_task_settings: Optional[TaskSettings] = None,
+                 tags: Dict[str, str] = None,
+                 max_concurrent_runs: int = 1,
+                 permissions: WorkflowPermissions = None,
                  ):
         # todo: add defaults
         self._airflow_110_dag = self._get_airflow_dag(airflow_110_dag)
@@ -27,11 +91,31 @@ class Workflow:
         default_compute.set_to_default()
         self._compute = {"default": default_compute}
         self._compute.update((compute and {c.compute_id: c for c in compute}) or {})
+        self._default_task_settings = default_task_settings
         # self._compute = (compute and {c.compute_id: c for c in compute}) or {"default": default_compute}
         self._tasks = {}
         self._active_task = None
         self._graph = nx.DiGraph()
         self._graph.add_node(ROOT_NODE)
+        self._permissions = permissions or WorkflowPermissions()
+        self._max_concurrent_runs = max_concurrent_runs
+        self._tags = tags
+
+    @property
+    def permissions(self) -> WorkflowPermissions:
+        return self._permissions
+
+    @property
+    def max_concurrent_runs(self) -> int:
+        return self._max_concurrent_runs
+
+    @property
+    def tags(self) -> Dict[str, str]:
+        return self._tags
+
+    @property
+    def default_task_settings(self):
+        return self._default_task_settings
 
     @property
     def bfs_layers(self):
@@ -98,7 +182,7 @@ class Workflow:
 
     def bind_airflow_task(self, name: str, compute: Optional[Compute] = None,
                           depends_on: Optional[List[Union[Callable, str]]] = None,
-                          trigger_rule: BrickflowTriggerRule = BrickflowTriggerRule.ALL_SUCCESS):
+                          ):
         self._airflow_110_dag.exists(name)
         trigger_rule = self._airflow_110_dag.get_task(name).trigger_rule
         if BrickflowTriggerRule.is_valid(trigger_rule) is False:

@@ -29,6 +29,7 @@ class BrickFlowEnvVars(Enum):
     BRICKFLOW_GIT_REF = "BRICKFLOW_GIT_REF"
     BRICKFLOW_GIT_PROVIDER = "BRICKFLOW_GIT_PROVIDER"
 
+
 # TODO: Logging
 
 class _Project:
@@ -65,7 +66,8 @@ class _Project:
 
         # Avoid node reqs
         from cdktf import TerraformStack
-        from brickflow.tf.databricks import DatabricksProvider, Job, JobGitSource, JobTask, JobTaskDependsOn
+        from brickflow.tf.databricks import DatabricksProvider, Job, JobGitSource, JobTask, JobTaskDependsOn, \
+            Permissions, PermissionsAccessControl
 
         stack = TerraformStack(app, id_)
         DatabricksProvider(
@@ -83,15 +85,27 @@ class _Project:
                               for f in task.depends_on]
                 tf_task_type = task.task_type if task.task_type != TaskType.AIRFLOW_TASK.value \
                     else TaskType.NOTEBOOK.value
+
+                task_settings = workflow.default_task_settings.merge(task.task_settings)
                 tasks.append(JobTask(
                     **{
                         tf_task_type: task.get_tf_obj(self._entry_point_path),
+                        **task_settings.to_tf_dict()
                     },
                     depends_on=depends_on,
                     task_key=task_name,
                     existing_cluster_id=workflow.existing_cluster_id))
             tasks.sort(key=lambda t: t.task_key)
-            Job(stack, id_=workflow_name, name=workflow_name, task=tasks, git_source=git_conf)
+            job = Job(stack, id_=workflow_name,
+                      name=workflow_name,
+                      task=tasks,
+                      git_source=git_conf,
+                      tags=workflow.tags,
+                      max_concurrent_runs=workflow.max_concurrent_runs
+                      )
+            if workflow.permissions.to_access_controls():
+                Permissions(stack, id_=f"{workflow_name}_permissions", job_id=job.id,
+                            access_control=[PermissionsAccessControl(**i) for i in workflow.permissions.to_access_controls()])
 
 
 class Stage(Enum):

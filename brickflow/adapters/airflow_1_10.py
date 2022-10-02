@@ -10,10 +10,10 @@ import types
 from airflow import macros
 from airflow.models import XCOM_RETURN_KEY, BaseOperator, Pool
 from airflow.operators.bash_operator import BashOperator
-from airflow.operators.python_operator import BranchPythonOperator, PythonOperator
+from airflow.operators.python_operator import BranchPythonOperator, PythonOperator, ShortCircuitOperator
 from airflow.utils.weight_rule import WeightRule
 
-from brickflow.adapters import BRANCH_SKIP_EXCEPT
+from brickflow.adapters import BRANCH_SKIP_EXCEPT, SKIP_EXCEPT_HACK
 from brickflow.engine.context import ctx, BrickflowTaskComs
 from brickflow.engine.utils import resolve_py4j_logging
 
@@ -26,6 +26,19 @@ def _bash_empty_on_kill(self):
 
 def _skip_all_except(self, ti: 'FakeTaskInstance', branch_task_ids):
     ti.xcom_push(BRANCH_SKIP_EXCEPT, branch_task_ids)
+
+
+def _short_circuit_execute(self, context):
+    condition = super(ShortCircuitOperator, self).execute(context)
+    self.log.info("Condition result is %s", condition)
+
+    if condition:
+        self.log.info('Proceeding with downstream tasks...')
+        return
+
+    self.log.info('Skipping downstream tasks...')
+    ti = context["ti"]
+    ti.xcom_push(BRANCH_SKIP_EXCEPT, SKIP_EXCEPT_HACK)
 
 
 def _bash_execute(self, context):
@@ -177,6 +190,7 @@ class Airflow110DagAdapter(object):
         BranchPythonOperator,
         PythonOperator,
         BashOperator,
+        ShortCircuitOperator,
     ]
 
     def __init__(self, dag, dbutils, ts=None):
@@ -223,6 +237,9 @@ class Airflow110DagAdapter(object):
             elif type(task) == BranchPythonOperator:
                 f = types.MethodType(_skip_all_except, task)
                 task.skip_all_except = f
+            elif type(task) == ShortCircuitOperator:
+                f = types.MethodType(_short_circuit_execute, task)
+                task.execute = f
             resp[task.task_id] = task
         return resp
 

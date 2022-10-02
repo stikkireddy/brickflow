@@ -5,7 +5,7 @@ import numbers
 from enum import Enum
 from typing import Callable, List, Dict, Union, Optional
 
-from brickflow.adapters import BRANCH_SKIP_EXCEPT
+from brickflow.adapters import BRANCH_SKIP_EXCEPT, SKIP_EXCEPT_HACK
 from brickflow.engine import ROOT_NODE
 from brickflow.engine.compute import Compute
 from brickflow.engine.context import BrickflowBuiltInTaskVariables, BrickflowInternalVariables, ctx
@@ -92,12 +92,66 @@ class InvalidTaskSignatureDefinition(Exception):
     pass
 
 
+class EmailNotifications:
+
+    def __init__(self, on_failure: List[str] = None, on_success: List[str] = None, on_start: List[str] = None):
+        self._on_start = on_start
+        self._on_success = on_success
+        self._on_failure = on_failure
+
+    def to_tf_dict(self):
+        return {
+            "on_start": self._on_start,
+            "on_failure": self._on_failure,
+            "on_success": self._on_success
+        }
+
+
+class TaskSettings:
+
+    def __init__(self,
+                 email_notifications: EmailNotifications = None,
+                 timeout_seconds: int = None,
+                 max_retries: int = None,
+                 min_retry_interval_millis: int = None,
+                 retry_on_timeout: int = None
+                 ):
+        self._retry_on_timeout = retry_on_timeout
+        self._min_retry_interval_millis = min_retry_interval_millis
+        self._max_retries = max_retries
+        self._timeout_seconds = timeout_seconds
+        self._email_notifications = email_notifications
+
+    def merge(self, other: 'TaskSettings'):
+        # overrides top level values
+        if other is None:
+            return self
+        return TaskSettings(
+            other._email_notifications or self._email_notifications,
+            other._timeout_seconds or self._timeout_seconds or 0,
+            other._max_retries or self._max_retries,
+            other._min_retry_interval_millis or self._min_retry_interval_millis,
+            other._retry_on_timeout or self._retry_on_timeout
+        )
+
+    def to_tf_dict(self):
+        return {
+            "email_notifications": self._email_notifications.to_tf_dict() if self._email_notifications is not None else {},
+            "timeout_seconds": self._timeout_seconds,
+            "max_retries": self._max_retries,
+            "min_retry_interval_millis": self._min_retry_interval_millis,
+            "retry_on_timeout": self._retry_on_timeout
+        }
+
+
 class Task:
 
     def __init__(self, task_id, task_func: Callable, workflow: 'Workflow', compute: 'Compute',
                  depends_on: Optional[List[Union[Callable, str]]] = None,
                  task_type: TaskType = TaskType.NOTEBOOK,
-                 trigger_rule: BrickflowTriggerRule = BrickflowTriggerRule.ALL_SUCCESS):
+                 trigger_rule: BrickflowTriggerRule = BrickflowTriggerRule.ALL_SUCCESS,
+                 task_settings: Optional[TaskSettings] = None):
+        self._task_settings = task_settings
         self._trigger_rule = trigger_rule
         self._task_type = task_type
         self._compute = compute
@@ -105,6 +159,10 @@ class Task:
         self._workflow: 'Workflow' = workflow
         self._task_func = task_func
         self._task_id = task_id
+
+    @property
+    def task_settings(self):
+        return self._task_settings
 
     @property
     def parents(self):
@@ -195,7 +253,8 @@ class Task:
     @with_brickflow_logger
     def execute(self):
         if self.should_skip() is True:
-            ctx.task_coms.put(self.name, BRANCH_SKIP_EXCEPT, "brickflow_hack_skip_all")
+            logging.info(f"Skipping task... {self.name}")
+            ctx.task_coms.put(self.name, BRANCH_SKIP_EXCEPT, SKIP_EXCEPT_HACK)
             return
         if self._task_type == TaskType.AIRFLOW_TASK:
             from brickflow.engine.utils import resolve_py4j_logging

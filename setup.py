@@ -18,10 +18,9 @@ setup(
     },
     setup_requires=['setuptools_scm'],
     install_requires=[
-        'cdktf>=0.12.2',
         'setuptools>=45',
         'python-decouple>=3.6',
-        'networkx>=2.8.7'
+        'networkx>=2'
     ] ,
     package_data={'': ['databricks_databricks@0.0.0.jsii.tgz', 'py.typed']},
     entry_points='''
