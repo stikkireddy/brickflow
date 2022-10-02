@@ -3,8 +3,10 @@ import numbers
 from enum import Enum
 from typing import Callable, List, Dict, Union, Optional
 
+from brickflow.adapters.airflow_1_10 import BRANCH_SKIP_EXCEPT
+from brickflow.engine import ROOT_NODE
 from brickflow.engine.compute import Compute
-from brickflow.engine.context import BrickflowBuiltInTaskVariables, BrickflowInternalVariables
+from brickflow.engine.context import BrickflowBuiltInTaskVariables, BrickflowInternalVariables, ctx
 
 
 class TaskNotFoundError(Exception):
@@ -26,9 +28,25 @@ class TaskValueHandler:
         pass
 
 
+class BrickflowTriggerRule(Enum):
+    ALL_SUCCESS = "all_success"
+    NONE_FAILED = "none_failed"
+
+    @classmethod
+    def is_valid(cls, trigger_rule):
+        for k in cls:
+            if trigger_rule == k.value:
+                return True
+        return False
+
+class UnsupportedBrickflowTriggerRuleError(Exception):
+    pass
+
+
 class TaskType(Enum):
     NOTEBOOK = "notebook_task"
     SQL = "sql_task"
+    AIRFLOW_TASK = "airflow_task"
 
 
 class TaskParameters:
@@ -49,13 +67,19 @@ class Task:
 
     def __init__(self, task_id, task_func: Callable, workflow: 'Workflow', compute: 'Compute',
                  depends_on: Optional[List[Union[Callable, str]]] = None,
-                 task_type: TaskType = TaskType.NOTEBOOK):
+                 task_type: TaskType = TaskType.NOTEBOOK,
+                 trigger_rule: BrickflowTriggerRule = BrickflowTriggerRule.ALL_SUCCESS):
+        self._trigger_rule = trigger_rule
         self._task_type = task_type
         self._compute = compute
         self._depends_on = depends_on or []
-        self._workflow = workflow
+        self._workflow: 'Workflow' = workflow
         self._task_func = task_func
         self._task_id = task_id
+
+    @property
+    def parents(self):
+        return list(self._workflow.parents(self._task_id))
 
     @property
     def task_type(self) -> str:
@@ -83,7 +107,7 @@ class Task:
 
     def get_tf_obj(self, entrypoint):
         from brickflow.tf.databricks import JobTaskNotebookTask
-        if self._task_type == TaskType.NOTEBOOK:
+        if self._task_type == TaskType.NOTEBOOK or self._task_type == TaskType.AIRFLOW_TASK:
             return JobTaskNotebookTask(
                 notebook_path=entrypoint,
                 base_parameters={**self.builtin_notebook_params, **self.brickflow_default_params,
@@ -117,6 +141,32 @@ class Task:
             return {}
         return {k: str(v) for k, v in spec.kwonlydefaults.items()}
 
+    def should_skip(self):
+        node_skip_checks = []
+        for parent in self.parents:
+            if parent != ROOT_NODE:
+                try:
+                    task_to_not_skip = ctx.task_coms.get(parent, BRANCH_SKIP_EXCEPT)
+                    if self.name != task_to_not_skip:
+                        # set this task to skip
+                        ctx.task_coms.put(self.name, BRANCH_SKIP_EXCEPT, "")
+                        node_skip_checks.append(True)
+                except Exception as e:
+                    # ignore errors as it probably doesnt exist
+                    node_skip_checks.append(False)
+        if not node_skip_checks:
+            return False
+        if self._trigger_rule == BrickflowTriggerRule.ALL_SUCCESS:
+            return any(node_skip_checks)
+        if self._trigger_rule == BrickflowTriggerRule.NONE_FAILED:
+            return all(node_skip_checks)
+
     def execute(self):
-        # TODO: Inject context object
-        self._task_func()
+        if self.should_skip() is True:
+            # print(f"SKIPPING TASK: {self.name}")
+            return
+        if self._task_type == TaskType.AIRFLOW_TASK:
+            self._workflow.airflow_dag.execute(task_id=self.name)
+        else:
+            # TODO: Inject context object
+            self._task_func()
