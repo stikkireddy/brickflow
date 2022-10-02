@@ -2,7 +2,6 @@ import functools
 from typing import Callable, List, Optional, Dict, Union
 
 import networkx as nx
-from airflow.utils.trigger_rule import TriggerRule
 
 from brickflow.engine import ROOT_NODE
 from brickflow.engine.compute import Compute

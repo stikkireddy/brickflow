@@ -1,12 +1,38 @@
+import functools
 import inspect
+import logging
 import numbers
 from enum import Enum
 from typing import Callable, List, Dict, Union, Optional
 
-from brickflow.adapters.airflow_1_10 import BRANCH_SKIP_EXCEPT
+from brickflow.adapters import BRANCH_SKIP_EXCEPT
 from brickflow.engine import ROOT_NODE
 from brickflow.engine.compute import Compute
 from brickflow.engine.context import BrickflowBuiltInTaskVariables, BrickflowInternalVariables, ctx
+
+
+def with_brickflow_logger(f):
+    @functools.wraps(f)
+    def func(*args, **kwargs):
+        _self = args[0]
+        logger = logging.getLogger()  # Logger
+        back_up_logging_handlers = logger.handlers
+        logger.handlers = []
+        logger_handler = logging.StreamHandler()  # Handler for the logger
+        logger.addHandler(logger_handler)
+
+        # First, generic formatter:
+        logger_handler.setFormatter(logging.Formatter(
+            f'[%(asctime)s] [%(levelname)s] [brickflow:{_self.name}] {{%(module)s.py:%(lineno)d}} - %(message)s'))
+        resp = f(*args, **kwargs)
+
+        logger.handlers = []
+        for handler in back_up_logging_handlers:
+            logger.addHandler(handler)
+
+        return resp
+
+    return func
 
 
 class TaskNotFoundError(Exception):
@@ -38,6 +64,7 @@ class BrickflowTriggerRule(Enum):
             if trigger_rule == k.value:
                 return True
         return False
+
 
 class UnsupportedBrickflowTriggerRuleError(Exception):
     pass
@@ -148,9 +175,11 @@ class Task:
                 try:
                     task_to_not_skip = ctx.task_coms.get(parent, BRANCH_SKIP_EXCEPT)
                     if self.name != task_to_not_skip:
-                        # set this task to skip
-                        ctx.task_coms.put(self.name, BRANCH_SKIP_EXCEPT, "")
+                        # set this task to skip hack to keep to empty to trigger failure
+                        # key look up will fail
                         node_skip_checks.append(True)
+                    else:
+                        node_skip_checks.append(False)
                 except Exception as e:
                     # ignore errors as it probably doesnt exist
                     node_skip_checks.append(False)
@@ -161,11 +190,14 @@ class Task:
         if self._trigger_rule == BrickflowTriggerRule.NONE_FAILED:
             return all(node_skip_checks)
 
+    @with_brickflow_logger
     def execute(self):
         if self.should_skip() is True:
-            # print(f"SKIPPING TASK: {self.name}")
+            ctx.task_coms.put(self.name, BRANCH_SKIP_EXCEPT, "brickflow_hack_skip_all")
             return
         if self._task_type == TaskType.AIRFLOW_TASK:
+            from brickflow.adapters.airflow_1_10 import resolve_py4j_logging
+            resolve_py4j_logging()
             self._workflow.airflow_dag.execute(task_id=self.name)
         else:
             # TODO: Inject context object

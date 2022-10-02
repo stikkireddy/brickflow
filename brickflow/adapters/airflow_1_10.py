@@ -13,6 +13,7 @@ from airflow.operators.bash_operator import BashOperator
 from airflow.operators.python_operator import BranchPythonOperator, PythonOperator, ShortCircuitOperator
 from airflow.utils.weight_rule import WeightRule
 
+from brickflow.adapters import BRANCH_SKIP_EXCEPT
 from brickflow.engine.context import ctx, BrickflowTaskComs
 
 
@@ -33,9 +34,6 @@ LOGGER = logging.getLogger(__name__)
 
 def _bash_empty_on_kill(self):
     pass
-
-
-BRANCH_SKIP_EXCEPT = "branch_skip_except"
 
 
 def _skip_all_except(self, ti: 'FakeTaskInstance', branch_task_ids):
