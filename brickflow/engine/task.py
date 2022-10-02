@@ -9,6 +9,7 @@ from brickflow.adapters import BRANCH_SKIP_EXCEPT
 from brickflow.engine import ROOT_NODE
 from brickflow.engine.compute import Compute
 from brickflow.engine.context import BrickflowBuiltInTaskVariables, BrickflowInternalVariables, ctx
+from brickflow.engine.utils import resolve_py4j_logging
 
 
 def with_brickflow_logger(f):
@@ -24,6 +25,7 @@ def with_brickflow_logger(f):
         # First, generic formatter:
         logger_handler.setFormatter(logging.Formatter(
             f'[%(asctime)s] [%(levelname)s] [brickflow:{_self.name}] {{%(module)s.py:%(lineno)d}} - %(message)s'))
+        resolve_py4j_logging()
         resp = f(*args, **kwargs)
 
         logger.handlers = []
@@ -196,7 +198,7 @@ class Task:
             ctx.task_coms.put(self.name, BRANCH_SKIP_EXCEPT, "brickflow_hack_skip_all")
             return
         if self._task_type == TaskType.AIRFLOW_TASK:
-            from brickflow.adapters.airflow_1_10 import resolve_py4j_logging
+            from brickflow.engine.utils import resolve_py4j_logging
             resolve_py4j_logging()
             self._workflow.airflow_dag.execute(task_id=self.name)
         else:

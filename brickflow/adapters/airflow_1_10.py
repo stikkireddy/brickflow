@@ -10,24 +10,12 @@ import types
 from airflow import macros
 from airflow.models import XCOM_RETURN_KEY, BaseOperator, Pool
 from airflow.operators.bash_operator import BashOperator
-from airflow.operators.python_operator import BranchPythonOperator, PythonOperator, ShortCircuitOperator
+from airflow.operators.python_operator import BranchPythonOperator, PythonOperator
 from airflow.utils.weight_rule import WeightRule
 
 from brickflow.adapters import BRANCH_SKIP_EXCEPT
 from brickflow.engine.context import ctx, BrickflowTaskComs
-
-
-def resolve_py4j_logging():
-    try:
-        from pyspark.sql import SparkSession
-        # spark = SparkSession.getActiveSession()
-        import logging
-        # logger = spark._jvm.org.apache.log4j
-        logging.getLogger("py4j.java_gateway").setLevel(logging.ERROR)
-    except Exception as e:
-        # Ignore when running locally
-        pass
-
+from brickflow.engine.utils import resolve_py4j_logging
 
 LOGGER = logging.getLogger(__name__)
 
@@ -134,6 +122,7 @@ def with_task_logger(f):
         logger.addHandler(logger_handler)
 
         # First, generic formatter:
+        resolve_py4j_logging()
         logger_handler.setFormatter(logging.Formatter(
             f'[%(asctime)s] [%(levelname)s] [airflow_1_10_task:{task_id}] {{%(module)s.py:%(lineno)d}} - %(message)s'))
         resp = f(*args, **kwargs)
