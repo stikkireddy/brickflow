@@ -3,8 +3,8 @@ import numbers
 from enum import Enum
 from typing import Callable, List, Dict, Union, Optional
 
-from sdk.engine.compute import Compute
-from sdk.engine.context import BrickflowBuiltInTaskVariables, BrickflowInternalVariables
+from brickflow.engine.compute import Compute
+from brickflow.engine.context import BrickflowBuiltInTaskVariables, BrickflowInternalVariables
 
 
 class TaskNotFoundError(Exception):
@@ -82,7 +82,7 @@ class Task:
         }
 
     def get_tf_obj(self, entrypoint):
-        from sdk.tf.databricks import JobTaskNotebookTask
+        from brickflow.tf.databricks import JobTaskNotebookTask
         if self._task_type == TaskType.NOTEBOOK:
             return JobTaskNotebookTask(
                 notebook_path=entrypoint,

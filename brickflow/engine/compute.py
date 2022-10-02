@@ -59,7 +59,7 @@ class Compute:
 
     def to_runtime_tf(self, stack: 'TerraformStack'):
         from cdktf import TerraformStack
-        from sdk.tf.databricks import DataDatabricksNodeType, DataDatabricksSparkVersion
+        from brickflow.tf.databricks import DataDatabricksNodeType, DataDatabricksSparkVersion
         stack: TerraformStack
         return DataDatabricksSparkVersion(stack,
                                           id_=f"{self.compute_id}_runtime",

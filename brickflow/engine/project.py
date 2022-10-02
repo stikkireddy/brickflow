@@ -3,10 +3,10 @@ from typing import Dict, Callable
 
 from decouple import config
 
-from sdk.engine import is_git_dirty, get_current_commit
-from sdk.engine.context import ctx, BrickflowInternalVariables
-from sdk.engine.utils import wraps_keyerror
-from sdk.engine.workflow import Workflow
+from brickflow.engine import is_git_dirty, get_current_commit
+from brickflow.engine.context import ctx, BrickflowInternalVariables
+from brickflow.engine.utils import wraps_keyerror
+from brickflow.engine.workflow import Workflow
 
 
 class WorkflowAlreadyExistsError(Exception):
@@ -64,7 +64,7 @@ class _Project:
 
         # Avoid node reqs
         from cdktf import TerraformStack
-        from sdk.tf.databricks import DatabricksProvider, Job, JobGitSource, JobTask, JobTaskDependsOn
+        from brickflow.tf.databricks import DatabricksProvider, Job, JobGitSource, JobTask, JobTaskDependsOn
 
         stack = TerraformStack(app, id_)
         DatabricksProvider(
