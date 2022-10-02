@@ -7,6 +7,7 @@ from brickflow.engine import is_git_dirty, get_current_commit
 from brickflow.engine.context import ctx, BrickflowInternalVariables
 from brickflow.engine.utils import wraps_keyerror
 from brickflow.engine.workflow import Workflow
+from brickflow.engine.task import TaskType
 
 
 class WorkflowAlreadyExistsError(Exception):
@@ -80,9 +81,11 @@ class _Project:
             for task_name, task in workflow.tasks.items():
                 depends_on = [JobTaskDependsOn(task_key=f.__name__ if isinstance(f, Callable) else f)
                               for f in task.depends_on]
+                tf_task_type = task.task_type if task.task_type != TaskType.AIRFLOW_TASK.value \
+                    else TaskType.NOTEBOOK.value
                 tasks.append(JobTask(
                     **{
-                        task.task_type: task.get_tf_obj(self._entry_point_path),
+                        tf_task_type: task.get_tf_obj(self._entry_point_path),
                     },
                     depends_on=depends_on,
                     task_key=task_name,
