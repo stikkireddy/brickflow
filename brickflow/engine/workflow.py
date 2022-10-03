@@ -5,7 +5,6 @@ import networkx as nx
 
 from brickflow.engine import ROOT_NODE
 from brickflow.engine.compute import Compute
-from brickflow.engine.context import ctx
 from brickflow.engine.task import (
     TaskNotFoundError,
     AnotherActiveTaskError,
@@ -155,7 +154,7 @@ class Workflow:
         try:
             from brickflow.adapters.airflow_1_10 import Airflow110DagAdapter
 
-            return Airflow110DagAdapter(dag110, ctx.dbutils)
+            return Airflow110DagAdapter(dag110)
         except ImportError:
             # TODO: log error
             return None

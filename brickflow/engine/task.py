@@ -5,13 +5,14 @@ import numbers
 from enum import Enum
 from typing import Callable, List, Dict, Union, Optional
 
-from brickflow.adapters import BRANCH_SKIP_EXCEPT, SKIP_EXCEPT_HACK
 from brickflow.engine import ROOT_NODE
 from brickflow.engine.compute import Compute
-from brickflow.engine.context import (
+from brickflow.context import (
     BrickflowBuiltInTaskVariables,
     BrickflowInternalVariables,
     ctx,
+    BRANCH_SKIP_EXCEPT,
+    SKIP_EXCEPT_HACK,
 )
 from brickflow.engine.utils import resolve_py4j_logging
 
@@ -207,8 +208,8 @@ class Task:
     @property
     def brickflow_default_params(self):
         return {
-            BrickflowInternalVariables.workflow_id: self._workflow.name,
-            BrickflowInternalVariables.task_id: self.name,
+            BrickflowInternalVariables.workflow_id.value: self._workflow.name,
+            BrickflowInternalVariables.task_id.value: self.name,
         }
 
     def get_tf_obj(self, entrypoint):
@@ -280,13 +281,14 @@ class Task:
 
     @with_brickflow_logger
     def execute(self):
+        ctx.set_current_task(self.name)
         if self.should_skip() is True:
             logging.info("Skipping task... %s", self.name)
             ctx.task_coms.put(self.name, BRANCH_SKIP_EXCEPT, SKIP_EXCEPT_HACK)
-            return
-        if self._task_type == TaskType.AIRFLOW_TASK:
+        elif self._task_type == TaskType.AIRFLOW_TASK:
             resolve_py4j_logging()
             self._workflow.airflow_dag.execute(task_id=self.name)
         else:
             # TODO: Inject context object
             self._task_func()
+        ctx.set_current_task(self.name)

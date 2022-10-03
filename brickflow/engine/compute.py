@@ -75,8 +75,8 @@ class Compute:
     #                                       beta=self.beta,
     #                                       )
     #
-    # def set_to_default(self):
-    #     self.compute_id = "default"
+    def set_to_default(self):
+        self.compute_id = "default"
 
 
 class SelfDefinedCluster:

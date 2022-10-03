@@ -8,6 +8,7 @@ import time
 import types
 
 from airflow import macros
+from airflow import DAG
 from airflow.models import XCOM_RETURN_KEY, BaseOperator, Pool
 from airflow.operators.bash_operator import BashOperator
 from airflow.operators.python_operator import (
@@ -17,8 +18,12 @@ from airflow.operators.python_operator import (
 )
 from airflow.utils.weight_rule import WeightRule
 
-from brickflow.adapters import BRANCH_SKIP_EXCEPT, SKIP_EXCEPT_HACK
-from brickflow.engine.context import ctx, BrickflowTaskComs
+from brickflow.context import (
+    ctx,
+    BrickflowTaskComs,
+    BRANCH_SKIP_EXCEPT,
+    SKIP_EXCEPT_HACK,
+)
 from brickflow.engine.utils import resolve_py4j_logging
 
 LOGGER = logging.getLogger(__name__)
@@ -105,17 +110,13 @@ class FakeTaskInstance(object):
         task_id,
         task,
         execution_date,
-        dag_instance: "Airflow110DagAdapter",
-        dbutils,
     ):
         self._execution_date = execution_date
         self._task = task
         self._task_id = task_id
-        self._dag_instance = dag_instance
-        self._dbutils = dbutils
 
     def xcom_push(self, key, value):
-        self._dag_instance.fake_xcoms.put(task_id=self._task_id, key=key, value=value)
+        ctx.task_coms.put(task_id=self._task_id, key=key, value=value)
 
     def xcom_pull(self, task_ids, key=XCOM_RETURN_KEY, dag_id=None):
         if dag_id is not None:
@@ -128,10 +129,7 @@ class FakeTaskInstance(object):
                 "request."
             )
         task_id = task_ids[0] if isinstance(task_ids, list) else task_ids
-        return self._dag_instance.fake_xcoms.get(task_id, key)
-
-    def get_dagrun(self):
-        return self._dag_instance
+        return ctx.task_coms.get(task_id, key)
 
     @property
     def execution_date(self):
@@ -156,7 +154,8 @@ def with_task_logger(f):
         resolve_py4j_logging()
         logger_handler.setFormatter(
             logging.Formatter(
-                f"[%(asctime)s] [%(levelname)s] [airflow_1_10_task:{task_id}] {{%(module)s.py:%(lineno)d}} - %(message)s"
+                f"[%(asctime)s] [%(levelname)s] [airflow_1_10_task:{task_id}] "
+                "{%(module)s.py:%(lineno)d} - %(message)s"
             )
         )
         resp = f(*args, **kwargs)
@@ -214,11 +213,9 @@ class Airflow110DagAdapter(object):
         ShortCircuitOperator,
     ]
 
-    def __init__(self, dag, dbutils, ts=None):
-        from airflow import DAG
+    def __init__(self, dag, ts=None):
 
         self._dag: DAG = dag
-        self._dbutils = dbutils
         self._ts = ts or datetime.datetime.now()
         self._task_dict = self._get_task_dict()
         # must be run at the end to populate all fields and then generate ctx
@@ -339,5 +336,5 @@ class Airflow110DagAdapter(object):
             "ds_nodash": execution_ts.strftime("%Y%m%d"),
             "ts": str(execution_ts),
             "ts_nodash": execution_ts.strftime("%Y%m%d%H%M%S"),
-            "ti": FakeTaskInstance(task_id, task, execution_ts, self, self._dbutils),
+            "ti": FakeTaskInstance(task_id, task, execution_ts),
         }

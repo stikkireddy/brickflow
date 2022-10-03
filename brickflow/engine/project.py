@@ -4,7 +4,7 @@ from typing import Dict, Callable
 from decouple import config
 
 from brickflow.engine import is_git_dirty, get_current_commit
-from brickflow.engine.context import ctx, BrickflowInternalVariables
+from brickflow.context import ctx, BrickflowInternalVariables
 from brickflow.engine.utils import wraps_keyerror
 from brickflow.engine.workflow import Workflow
 from brickflow.engine.task import TaskType

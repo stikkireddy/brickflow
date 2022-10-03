@@ -1,0 +1,55 @@
+# from setuptools import setup, find_packages
+#
+# with open("README.md", "r", encoding="utf8") as fh:
+#     long_description = fh.read()
+#
+#
+# def read_reqs(file):
+#     with open(file, "r", encoding="utf-8") as f:
+#         return f.readlines()
+#
+#
+# airflow_adapters = read_reqs("airflow-requirements.txt")
+# deploy = read_reqs("deploy-requirements.txt")
+# all_reqs = read_reqs("all-requirements.txt")
+#
+# # airflow_adapters = ["apache-airflow==1.10.15", "markupsafe==2.0.1"]
+# # deploy = ["cdktf>=0.12.3"]
+# # dev_requirements = ["black>=22.0.0", "prospector>=1.4.0"]
+#
+# setup(
+#     name="brickflow",
+#     author="Sri Tikkireddy",
+#     author_email="sri.tikkireddy@databricks.com",
+#     description="Databricks Brickflow",
+#     long_description=long_description,
+#     long_description_content_type="text/markdown",
+#     url="",
+#     license="",
+#     packages=find_packages(include=["*"], exclude=['tests', 'tests.*', ]),
+#     use_scm_version={
+#         "local_scheme": "dirty-tag"
+#     },
+#     setup_requires=['setuptools_scm'],
+#     install_requires=[
+#         'setuptools>=45',
+#         'python-decouple>=3.6',
+#         'networkx>=2'
+#     ],
+#     extras_require={
+#         "airflow": airflow_adapters,
+#         "deploy": deploy,
+#         "all": all_reqs,
+#         # "dev": airflow_adapters + deploy + dev_requirements
+#
+#     },
+#     package_data={'': ['databricks_databricks@0.0.0.jsii.tgz', 'py.typed']},
+#     entry_points='''
+#         [console_scripts]
+#     ''',
+#     classifiers=[
+#         "Programming Language :: Python :: 3",
+#         "Operating System :: OS Independent",
+#     ],
+#     python_requires='>=3.6',
+# )

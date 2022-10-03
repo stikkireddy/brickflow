@@ -1,0 +1,35 @@
+[tool.poetry]
+name = "brickflow"
+version = "0.1.0"
+description = ""
+authors = ["stikkireddy <sri.tikkireddy@databricks.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+python-decouple = ">=3.6"
+networkx = ">=2"
+
+apache-airflow = {version = "==1.10.15", optional = true }
+markupsafe = {version = "==2.0.1",  optional = true }
+# conflicts with apache-airflow which, I would rather skip cdktf
+#cdktf = {version = ">=0.12.3",  optional = true }
+
+
+[tool.poetry.extras]
+airflow_110 = ["apache-airflow", "markupsafe"]
+
+#[tool.poetry.group.dev.dependencies]
+#black = "^22.8.0"
+#prospector = "^1.7.7"
+
+[build-system]
+requires = ["poetry-core", "poetry-dynamic-versioning"]
+build-backend = "poetry_dynamic_versioning.backend"
+#build-backend = "poetry.core.masonry.api"
+
+[tool.poetry-dynamic-versioning]
+enable = true
+vcs = "git"
+bump = true
+style = "semver"

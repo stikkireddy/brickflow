@@ -1,6 +1,9 @@
 import functools
 from enum import Enum
-from typing import Optional, Any
+from typing import Optional, Any, Union, Callable
+
+BRANCH_SKIP_EXCEPT = "branch_skip_except"
+SKIP_EXCEPT_HACK = "brickflow_hack_skip_all"
 
 
 class ContextMode(Enum):
@@ -19,7 +22,7 @@ class BrickflowBuiltInTaskVariables(Enum):
     task_key = "brickflow_task_key"
 
 
-class BrickflowInternalVariables:
+class BrickflowInternalVariables(Enum):
     workflow_id = "brickflow_internal_workflow_name"
     task_id = "brickflow_internal_task_name"
 
@@ -84,6 +87,26 @@ class Context:
 
         self._mode = self._get_context_mode()
         self._task_coms = BrickflowTaskComs(self._dbutils)
+        self._current_task = None
+
+    @property
+    def current_task(self):
+        return self._current_task
+
+    def set_current_task(self, task_key):
+        self._current_task = task_key
+
+    def reset_current_task(self, task_key):
+        self._current_task = task_key
+
+    def skip_all_except(self, branch_task: Union[Callable, str]):
+        branch_task_key = (
+            branch_task.__name__ if callable(branch_task) is True else branch_task
+        )
+        self._task_coms.put(self._current_task, BRANCH_SKIP_EXCEPT, branch_task_key)
+
+    def skip_all_following(self):
+        self._task_coms.put(self._current_task, BRANCH_SKIP_EXCEPT, SKIP_EXCEPT_HACK)
 
     @property
     def task_coms(self) -> BrickflowTaskComs:
