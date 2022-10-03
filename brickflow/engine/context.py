@@ -40,8 +40,7 @@ def bind_variable(builtin: BrickflowBuiltInTaskVariables):
 
 
 class BrickflowTaskComsDict:
-
-    def __init__(self, task_id, task_coms: 'BrickflowTaskComs'):
+    def __init__(self, task_id, task_coms: "BrickflowTaskComs"):
         self._task_id = task_id
         self._task_coms = task_coms
 
@@ -51,7 +50,6 @@ class BrickflowTaskComsDict:
 
 
 class BrickflowTaskComs:
-
     def __init__(self, dbutils):
         self._storage = {}
         self._dbutils = dbutils
@@ -71,14 +69,15 @@ class BrickflowTaskComs:
         if key is None:
             return BrickflowTaskComsDict(task_id=task_id, task_coms=self)
         if self._dbutils is not None:
-            return self._dbutils.jobs.taskValues.get(key=key, taskKey=task_id, debugValue="debug")
+            return self._dbutils.jobs.taskValues.get(
+                key=key, taskKey=task_id, debugValue="debug"
+            )
         else:
             # TODO: logging using local task coms
             return self._storage[self._key(task_id, key)]
 
 
 class Context:
-
     def __init__(self):
         # Order of init matters todo: fix this
         self._dbutils: Optional[Any] = None
@@ -133,6 +132,7 @@ class Context:
         try:
             from pyspark.dbutils import DBUtils
             from pyspark.sql import SparkSession
+
             spark = SparkSession.getActiveSession()
             self._dbutils = DBUtils(spark)
             return ContextMode.databricks

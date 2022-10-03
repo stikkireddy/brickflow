@@ -8,7 +8,11 @@ from typing import Callable, List, Dict, Union, Optional
 from brickflow.adapters import BRANCH_SKIP_EXCEPT, SKIP_EXCEPT_HACK
 from brickflow.engine import ROOT_NODE
 from brickflow.engine.compute import Compute
-from brickflow.engine.context import BrickflowBuiltInTaskVariables, BrickflowInternalVariables, ctx
+from brickflow.engine.context import (
+    BrickflowBuiltInTaskVariables,
+    BrickflowInternalVariables,
+    ctx,
+)
 from brickflow.engine.utils import resolve_py4j_logging
 
 
@@ -23,8 +27,11 @@ def with_brickflow_logger(f):
         logger.addHandler(logger_handler)
 
         # First, generic formatter:
-        logger_handler.setFormatter(logging.Formatter(
-            f'[%(asctime)s] [%(levelname)s] [brickflow:{_self.name}] {{%(module)s.py:%(lineno)d}} - %(message)s'))
+        logger_handler.setFormatter(
+            logging.Formatter(
+                f"[%(asctime)s] [%(levelname)s] [brickflow:{_self.name}] {{%(module)s.py:%(lineno)d}} - %(message)s"
+            )
+        )
         resolve_py4j_logging()
         resp = f(*args, **kwargs)
 
@@ -50,7 +57,6 @@ class TaskAlreadyExistsError(Exception):
 
 
 class TaskValueHandler:
-
     @staticmethod
     def get_task_value_key(f: Callable):
         pass
@@ -79,7 +85,6 @@ class TaskType(Enum):
 
 
 class TaskParameters:
-
     def __init__(self, params):
         self._params = params
 
@@ -93,8 +98,12 @@ class InvalidTaskSignatureDefinition(Exception):
 
 
 class EmailNotifications:
-
-    def __init__(self, on_failure: List[str] = None, on_success: List[str] = None, on_start: List[str] = None):
+    def __init__(
+        self,
+        on_failure: List[str] = None,
+        on_success: List[str] = None,
+        on_start: List[str] = None,
+    ):
         self._on_start = on_start
         self._on_success = on_success
         self._on_failure = on_failure
@@ -103,26 +112,26 @@ class EmailNotifications:
         return {
             "on_start": self._on_start,
             "on_failure": self._on_failure,
-            "on_success": self._on_success
+            "on_success": self._on_success,
         }
 
 
 class TaskSettings:
-
-    def __init__(self,
-                 email_notifications: EmailNotifications = None,
-                 timeout_seconds: int = None,
-                 max_retries: int = None,
-                 min_retry_interval_millis: int = None,
-                 retry_on_timeout: int = None
-                 ):
+    def __init__(
+        self,
+        email_notifications: EmailNotifications = None,
+        timeout_seconds: int = None,
+        max_retries: int = None,
+        min_retry_interval_millis: int = None,
+        retry_on_timeout: int = None,
+    ):
         self._retry_on_timeout = retry_on_timeout
         self._min_retry_interval_millis = min_retry_interval_millis
         self._max_retries = max_retries
         self._timeout_seconds = timeout_seconds
         self._email_notifications = email_notifications
 
-    def merge(self, other: 'TaskSettings'):
+    def merge(self, other: "TaskSettings"):
         # overrides top level values
         if other is None:
             return self
@@ -131,34 +140,42 @@ class TaskSettings:
             other._timeout_seconds or self._timeout_seconds or 0,
             other._max_retries or self._max_retries,
             other._min_retry_interval_millis or self._min_retry_interval_millis,
-            other._retry_on_timeout or self._retry_on_timeout
+            other._retry_on_timeout or self._retry_on_timeout,
         )
 
     def to_tf_dict(self):
-        email_not = self._email_notifications.to_tf_dict() if self._email_notifications is not None else {}
+        email_not = (
+            self._email_notifications.to_tf_dict()
+            if self._email_notifications is not None
+            else {}
+        )
         return {
             "email_notifications": email_not,
             "timeout_seconds": self._timeout_seconds,
             "max_retries": self._max_retries,
             "min_retry_interval_millis": self._min_retry_interval_millis,
-            "retry_on_timeout": self._retry_on_timeout
+            "retry_on_timeout": self._retry_on_timeout,
         }
 
 
 class Task:
-
-    def __init__(self, task_id, task_func: Callable, workflow: 'Workflow',  # noqa
-                 compute: 'Compute',
-                 depends_on: Optional[List[Union[Callable, str]]] = None,
-                 task_type: TaskType = TaskType.NOTEBOOK,
-                 trigger_rule: BrickflowTriggerRule = BrickflowTriggerRule.ALL_SUCCESS,
-                 task_settings: Optional[TaskSettings] = None):
+    def __init__(
+        self,
+        task_id,
+        task_func: Callable,
+        workflow: "Workflow",  # noqa
+        compute: "Compute",
+        depends_on: Optional[List[Union[Callable, str]]] = None,
+        task_type: TaskType = TaskType.NOTEBOOK,
+        trigger_rule: BrickflowTriggerRule = BrickflowTriggerRule.ALL_SUCCESS,
+        task_settings: Optional[TaskSettings] = None,
+    ):
         self._task_settings = task_settings
         self._trigger_rule = trigger_rule
         self._task_type = task_type
         self._compute = compute
         self._depends_on = depends_on or []
-        self._workflow: 'Workflow' = workflow   # noqa
+        self._workflow: "Workflow" = workflow  # noqa
         self._task_func = task_func
         self._task_id = task_id
 
@@ -196,23 +213,31 @@ class Task:
 
     def get_tf_obj(self, entrypoint):
         from brickflow.tf.databricks import JobTaskNotebookTask
+
         if self._task_type in [TaskType.NOTEBOOK, TaskType.AIRFLOW_TASK]:
             return JobTaskNotebookTask(
                 notebook_path=entrypoint,
-                base_parameters={**self.builtin_notebook_params, **self.brickflow_default_params,
-                                 **(self.custom_task_parameters or {})}
+                base_parameters={
+                    **self.builtin_notebook_params,
+                    **self.brickflow_default_params,
+                    **(self.custom_task_parameters or {}),
+                },
             )
 
     def is_valid_task_signature(self):
         # only supports kwonlyargs with defaults
         spec: inspect.FullArgSpec = inspect.getfullargspec(self._task_func)
         sig: inspect.Signature = inspect.signature(self._task_func)
-        signature_error_msg = "Task signatures only supports kwargs with defaults. or catch all varkw **kwargs" \
-                              "For example def execute(*, variable_a=None, variable_b=None, **kwargs). " \
-                              f"Please fix function def {self._task_func.__name__}{sig}: ..."
-        kwargs_default_error_msg = f"Keyword arguments must be either None, String or number. " \
-                                   f"Please handle booleans via strings. " \
-                                   f"Please fix function def {self._task_func.__name__}{sig}: ..."
+        signature_error_msg = (
+            "Task signatures only supports kwargs with defaults. or catch all varkw **kwargs"
+            "For example def execute(*, variable_a=None, variable_b=None, **kwargs). "
+            f"Please fix function def {self._task_func.__name__}{sig}: ..."
+        )
+        kwargs_default_error_msg = (
+            f"Keyword arguments must be either None, String or number. "
+            f"Please handle booleans via strings. "
+            f"Please fix function def {self._task_func.__name__}{sig}: ..."
+        )
 
         valid_case = spec.args == [] and spec.varargs is None and spec.defaults is None
         for _, v in spec.kwonlydefaults.items():

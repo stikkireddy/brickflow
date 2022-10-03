@@ -10,7 +10,11 @@ import types
 from airflow import macros
 from airflow.models import XCOM_RETURN_KEY, BaseOperator, Pool
 from airflow.operators.bash_operator import BashOperator
-from airflow.operators.python_operator import BranchPythonOperator, PythonOperator, ShortCircuitOperator
+from airflow.operators.python_operator import (
+    BranchPythonOperator,
+    PythonOperator,
+    ShortCircuitOperator,
+)
 from airflow.utils.weight_rule import WeightRule
 
 from brickflow.adapters import BRANCH_SKIP_EXCEPT, SKIP_EXCEPT_HACK
@@ -24,7 +28,9 @@ def _bash_empty_on_kill(self):  # pylint:disable=unused-argument
     pass
 
 
-def _skip_all_except(self, ti: 'FakeTaskInstance', branch_task_ids):  # pylint:disable=unused-argument
+def _skip_all_except(
+    self, ti: "FakeTaskInstance", branch_task_ids
+):  # pylint:disable=unused-argument
     ti.xcom_push(BRANCH_SKIP_EXCEPT, branch_task_ids)
 
 
@@ -33,10 +39,10 @@ def _short_circuit_execute(self, context):
     self.log.info("Condition result is %s", condition)
 
     if condition:
-        self.log.info('Proceeding with downstream tasks...')
+        self.log.info("Proceeding with downstream tasks...")
         return
 
-    self.log.info('Skipping downstream tasks...')
+    self.log.info("Skipping downstream tasks...")
     ti = context["ti"]
     ti.xcom_push(BRANCH_SKIP_EXCEPT, SKIP_EXCEPT_HACK)
 
@@ -51,18 +57,20 @@ def _bash_execute(self, context):  # pylint:disable=unused-argument
 
     LOGGER.info("Command: %s", self.bash_command)
     from airflow.utils.file import TemporaryDirectory
-    with TemporaryDirectory(prefix='airflowtmp') as tmp_dir:
+
+    with TemporaryDirectory(prefix="airflowtmp") as tmp_dir:
         try:
-            p = subprocess.Popen(   # pylint:disable=consider-using-with
+            p = subprocess.Popen(  # pylint:disable=consider-using-with
                 self.bash_command,
                 shell=True,
                 cwd=tmp_dir,
-                executable='/bin/bash',
+                executable="/bin/bash",
                 stderr=subprocess.STDOUT,
                 stdout=subprocess.PIPE,
                 universal_newlines=True,
-                env=env)
-            for line in iter(p.stdout.readline, ''):
+                env=env,
+            )
+            for line in iter(p.stdout.readline, ""):
                 resp = line
                 LOGGER.info("[STDOUT]: %s", line.rstrip())
             returncode = p.wait()
@@ -92,8 +100,14 @@ class XComsPullMultipleTaskIdsError(Exception):
 
 
 class FakeTaskInstance(object):
-
-    def __init__(self, task_id, task, execution_date, dag_instance: 'Airflow110DagAdapter', dbutils):
+    def __init__(
+        self,
+        task_id,
+        task,
+        execution_date,
+        dag_instance: "Airflow110DagAdapter",
+        dbutils,
+    ):
         self._execution_date = execution_date
         self._task = task
         self._task_id = task_id
@@ -105,10 +119,14 @@ class FakeTaskInstance(object):
 
     def xcom_pull(self, task_ids, key=XCOM_RETURN_KEY, dag_id=None):
         if dag_id is not None:
-            raise CrossDagXComsNotSupportedError("Cross dag xcoms not supported in framework raise feature request.")
+            raise CrossDagXComsNotSupportedError(
+                "Cross dag xcoms not supported in framework raise feature request."
+            )
         if isinstance(task_ids, list) and len(task_ids) > 1:
-            raise XComsPullMultipleTaskIdsError("Currently xcoms pull only supports one task_id please raise feature "
-                                                "request.")
+            raise XComsPullMultipleTaskIdsError(
+                "Currently xcoms pull only supports one task_id please raise feature "
+                "request."
+            )
         task_id = task_ids[0] if isinstance(task_ids, list) else task_ids
         return self._dag_instance.fake_xcoms.get(task_id, key)
 
@@ -136,8 +154,11 @@ def with_task_logger(f):
 
         # First, generic formatter:
         resolve_py4j_logging()
-        logger_handler.setFormatter(logging.Formatter(
-            f'[%(asctime)s] [%(levelname)s] [airflow_1_10_task:{task_id}] {{%(module)s.py:%(lineno)d}} - %(message)s'))
+        logger_handler.setFormatter(
+            logging.Formatter(
+                f"[%(asctime)s] [%(levelname)s] [airflow_1_10_task:{task_id}] {{%(module)s.py:%(lineno)d}} - %(message)s"
+            )
+        )
         resp = f(*args, **kwargs)
 
         logger.handlers = []
@@ -183,7 +204,7 @@ class Airflow110DagAdapter(object):
         "pool_slots": 1,
         "resources": None,
         "executor_config": {},
-        "email": None
+        "email": None,
     }
 
     SUPPORTED_OPERATORS = [
@@ -195,6 +216,7 @@ class Airflow110DagAdapter(object):
 
     def __init__(self, dag, dbutils, ts=None):
         from airflow import DAG
+
         self._dag: DAG = dag
         self._dbutils = dbutils
         self._ts = ts or datetime.datetime.now()
@@ -209,12 +231,16 @@ class Airflow110DagAdapter(object):
     def exists(self, task_id):
         if task_id in self._task_dict:
             return True
-        raise AirflowTaskDoesNotExistError(f"Task with task_id: {task_id} does not exist!\n"
-                                           f"Please take a look at the following tasks: "
-                                           f"{list(self._task_dict.keys())}")
+        raise AirflowTaskDoesNotExistError(
+            f"Task with task_id: {task_id} does not exist!\n"
+            f"Please take a look at the following tasks: "
+            f"{list(self._task_dict.keys())}"
+        )
 
     def is_branch_operator(self, task_id):
-        if task_id in self._task_dict and isinstance(self._task_dict[task_id], BranchPythonOperator):
+        if task_id in self._task_dict and isinstance(
+            self._task_dict[task_id], BranchPythonOperator
+        ):
             return True
         return False
 
@@ -253,8 +279,11 @@ class Airflow110DagAdapter(object):
     #     return J_CronMapper.fromUnixToQuartz().map(parser.parse(self._dag.schedule_interval)).asString()
 
     def _execution_timestamp(self):
-        previous, following, normalized = self._dag.previous_schedule(self._ts), self._dag.following_schedule(
-            self._ts), self._dag.normalize_schedule(self._ts)
+        previous, following, normalized = (
+            self._dag.previous_schedule(self._ts),
+            self._dag.following_schedule(self._ts),
+            self._dag.normalize_schedule(self._ts),
+        )
         # ts provided is on the dot on one of the schedules
         if previous != following != normalized:
             return normalized
@@ -262,14 +291,16 @@ class Airflow110DagAdapter(object):
         return previous
 
     def _execution_time(self):
-        return self._execution_timestamp().strftime('%H:%M:%S')
+        return self._execution_timestamp().strftime("%H:%M:%S")
 
     def validate_task(self, task_id):
         self.validate_task_fields(task_id)
         task: BaseOperator = self._task_dict[task_id]
         if type(task) in self.SUPPORTED_OPERATORS:
             return True
-        raise UnsupportedAirflowOperatorError(f"Unsupported airflow operator: {type(task)} for task: {task_id}")
+        raise UnsupportedAirflowOperatorError(
+            f"Unsupported airflow operator: {type(task)} for task: {task_id}"
+        )
 
     def validate_task_fields(self, task_id):
         self.exists(task_id)
@@ -281,7 +312,8 @@ class Airflow110DagAdapter(object):
                 unsupported_fields.append(field)
         if unsupported_fields:
             raise UnsupportedAirflowTaskFieldError(
-                f"Unsupported fields: {unsupported_fields} for task: {task_id}")
+                f"Unsupported fields: {unsupported_fields} for task: {task_id}"
+            )
 
     @with_task_logger
     def execute(self, task_id):
@@ -291,10 +323,7 @@ class Airflow110DagAdapter(object):
 
         task_context = self._create_task_context(task_id, task)
         env = Environment(loader=BaseLoader)
-        env.globals.update({
-            "macros": macros,
-            "ti": task_context
-        })
+        env.globals.update({"macros": macros, "ti": task_context})
 
         task.render_template_fields(task_context, jinja_env=env)
         resp = task.execute(context=task_context)
@@ -306,9 +335,9 @@ class Airflow110DagAdapter(object):
         execution_ts = self._execution_timestamp()
         return {
             "execution_date": execution_ts,
-            "ds": execution_ts.strftime('%Y-%m-%d'),
-            "ds_nodash": execution_ts.strftime('%Y%m%d'),
+            "ds": execution_ts.strftime("%Y-%m-%d"),
+            "ds_nodash": execution_ts.strftime("%Y%m%d"),
             "ts": str(execution_ts),
-            "ts_nodash": execution_ts.strftime('%Y%m%d%H%M%S'),
-            "ti": FakeTaskInstance(task_id, task, execution_ts, self, self._dbutils)
+            "ts_nodash": execution_ts.strftime("%Y%m%d%H%M%S"),
+            "ti": FakeTaskInstance(task_id, task, execution_ts, self, self._dbutils),
         }

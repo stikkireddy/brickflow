@@ -1,25 +1,27 @@
 class Compute:
-
-    def __init__(self, compute_id,
-                 cluster_min_vcpus=64,
-                 cluster_max_vcpus=64,
-                 min_gpus_per_worker=0,
-                 min_memory_gb_per_worker=32,
-                 gb_per_core=None,
-                 category="Memory Optimized",
-                 photon=True,
-                 photon_worker=None,
-                 photon_driver=None,
-                 graviton=True,
-                 delta_cache=True,
-                 support_port_forwarding=False,
-                 lts=True,
-                 latest=False,
-                 ml=False,
-                 genomics=False,
-                 gpu=False,
-                 beta=False,
-                 spark_version=None, ):
+    def __init__(
+        self,
+        compute_id,
+        cluster_min_vcpus=64,
+        cluster_max_vcpus=64,
+        min_gpus_per_worker=0,
+        min_memory_gb_per_worker=32,
+        gb_per_core=None,
+        category="Memory Optimized",
+        photon=True,
+        photon_worker=None,
+        photon_driver=None,
+        graviton=True,
+        delta_cache=True,
+        support_port_forwarding=False,
+        lts=True,
+        latest=False,
+        ml=False,
+        genomics=False,
+        gpu=False,
+        beta=False,
+        spark_version=None,
+    ):
         self.min_gpus_per_worker = min_gpus_per_worker
         self.cluster_max_vcpus = cluster_max_vcpus
         self.min_memory_gb_per_worker = min_memory_gb_per_worker
@@ -78,12 +80,14 @@ class Compute:
 
 
 class SelfDefinedCluster:
-    def __init__(self,
-                 node_type_id: str,
-                 driver_node_type_id: str,
-                 min_workers: int,
-                 max_workers: int,
-                 photon: bool):
+    def __init__(
+        self,
+        node_type_id: str,
+        driver_node_type_id: str,
+        min_workers: int,
+        max_workers: int,
+        photon: bool,
+    ):
         self.photon = photon
         self.max_workers = max_workers
         self.min_workers = min_workers
