@@ -105,7 +105,8 @@ class _Project:
                       )
             if workflow.permissions.to_access_controls():
                 Permissions(stack, id_=f"{workflow_name}_permissions", job_id=job.id,
-                            access_control=[PermissionsAccessControl(**i) for i in workflow.permissions.to_access_controls()])
+                            access_control=[PermissionsAccessControl(**i) for i in
+                                            workflow.permissions.to_access_controls()])
 
 
 class Stage(Enum):

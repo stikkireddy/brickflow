@@ -20,11 +20,11 @@ from brickflow.engine.utils import resolve_py4j_logging
 LOGGER = logging.getLogger(__name__)
 
 
-def _bash_empty_on_kill(self):
+def _bash_empty_on_kill(self):  # pylint:disable=unused-argument
     pass
 
 
-def _skip_all_except(self, ti: 'FakeTaskInstance', branch_task_ids):
+def _skip_all_except(self, ti: 'FakeTaskInstance', branch_task_ids):  # pylint:disable=unused-argument
     ti.xcom_push(BRANCH_SKIP_EXCEPT, branch_task_ids)
 
 
@@ -41,7 +41,7 @@ def _short_circuit_execute(self, context):
     ti.xcom_push(BRANCH_SKIP_EXCEPT, SKIP_EXCEPT_HACK)
 
 
-def _bash_execute(self, context):
+def _bash_execute(self, context):  # pylint:disable=unused-argument
     p = None
     returncode = None
     start = time.time()
@@ -53,7 +53,7 @@ def _bash_execute(self, context):
     from airflow.utils.file import TemporaryDirectory
     with TemporaryDirectory(prefix='airflowtmp') as tmp_dir:
         try:
-            p = subprocess.Popen(
+            p = subprocess.Popen(   # pylint:disable=consider-using-with
                 self.bash_command,
                 shell=True,
                 cwd=tmp_dir,
@@ -64,7 +64,7 @@ def _bash_execute(self, context):
                 env=env)
             for line in iter(p.stdout.readline, ''):
                 resp = line
-                LOGGER.info(f"[STDOUT]: {line.rstrip()}")
+                LOGGER.info("[STDOUT]: %s", line.rstrip())
             returncode = p.wait()
             p = None
             sys.stdout.flush()
@@ -75,8 +75,8 @@ def _bash_execute(self, context):
             if p is not None:
                 p.terminate()
                 p.wait()
-            LOGGER.info(f"Command: exited with return code %s", returncode)
-            LOGGER.info(f"Command took {end - start} seconds")
+            LOGGER.info("Command: exited with return code %s", returncode)
+            LOGGER.info("Command took %s seconds", end - start)
 
         if self.xcom_push_flag is True:
             return resp[:-1]  # skip newline char at end
@@ -106,10 +106,10 @@ class FakeTaskInstance(object):
     def xcom_pull(self, task_ids, key=XCOM_RETURN_KEY, dag_id=None):
         if dag_id is not None:
             raise CrossDagXComsNotSupportedError("Cross dag xcoms not supported in framework raise feature request.")
-        if type(task_ids) == list and len(task_ids) > 1:
+        if isinstance(task_ids, list) and len(task_ids) > 1:
             raise XComsPullMultipleTaskIdsError("Currently xcoms pull only supports one task_id please raise feature "
                                                 "request.")
-        task_id = task_ids[0] if type(task_ids) == list else task_ids
+        task_id = task_ids[0] if isinstance(task_ids, list) else task_ids
         return self._dag_instance.fake_xcoms.get(task_id, key)
 
     def get_dagrun(self):
@@ -127,7 +127,7 @@ class FakeTaskInstance(object):
 def with_task_logger(f):
     @functools.wraps(f)
     def func(*args, **kwargs):
-        task_id = args[1] if kwargs == {} else kwargs["task_id"]
+        task_id = args[1] if not kwargs else kwargs["task_id"]
         logger = logging.getLogger()  # Logger
         back_up_logging_handlers = logger.handlers
         logger.handlers = []
@@ -207,14 +207,14 @@ class Airflow110DagAdapter(object):
         return self._dag
 
     def exists(self, task_id):
-        if task_id in self._task_dict.keys():
+        if task_id in self._task_dict:
             return True
         raise AirflowTaskDoesNotExistError(f"Task with task_id: {task_id} does not exist!\n"
                                            f"Please take a look at the following tasks: "
                                            f"{list(self._task_dict.keys())}")
 
     def is_branch_operator(self, task_id):
-        if task_id in self._task_dict.keys() and isinstance(self._task_dict[task_id], BranchPythonOperator):
+        if task_id in self._task_dict and isinstance(self._task_dict[task_id], BranchPythonOperator):
             return True
         return False
 
@@ -228,30 +228,29 @@ class Airflow110DagAdapter(object):
 
     def _get_task_dict(self):
         resp = {}
-        from airflow.operators.bash_operator import BashOperator
         for task in self._dag.tasks:
-            if type(task) == BashOperator:
+            if isinstance(task, BashOperator):
                 f = types.MethodType(_bash_execute, task)
                 task.execute = f
                 task.on_kill = _bash_empty_on_kill
-            elif type(task) == BranchPythonOperator:
+            elif isinstance(task, BranchPythonOperator):
                 f = types.MethodType(_skip_all_except, task)
                 task.skip_all_except = f
-            elif type(task) == ShortCircuitOperator:
+            elif isinstance(task, ShortCircuitOperator):
                 f = types.MethodType(_short_circuit_execute, task)
                 task.execute = f
             resp[task.task_id] = task
         return resp
 
-    def get_quartz_syntax(self):
-        spark = SparkSession.getActiveSession()
-        jvm = spark._jvm
-        J_CronParser = jvm.com.cronutils.parser.CronParser
-        J_CronDefinitionBuilder = jvm.com.cronutils.model.definition.CronDefinitionBuilder
-        J_CronType = jvm.com.cronutils.model.CronType
-        J_CronMapper = jvm.com.cronutils.mapper.CronMapper
-        parser = J_CronParser(J_CronDefinitionBuilder.instanceDefinitionFor(J_CronType.UNIX))
-        return J_CronMapper.fromUnixToQuartz().map(parser.parse(self._dag.schedule_interval)).asString()
+    # def get_quartz_syntax(self):
+    #     spark = SparkSession.getActiveSession()
+    #     jvm = spark._jvm
+    #     J_CronParser = jvm.com.cronutils.parser.CronParser
+    #     J_CronDefinitionBuilder = jvm.com.cronutils.model.definition.CronDefinitionBuilder
+    #     J_CronType = jvm.com.cronutils.model.CronType
+    #     J_CronMapper = jvm.com.cronutils.mapper.CronMapper
+    #     parser = J_CronParser(J_CronDefinitionBuilder.instanceDefinitionFor(J_CronType.UNIX))
+    #     return J_CronMapper.fromUnixToQuartz().map(parser.parse(self._dag.schedule_interval)).asString()
 
     def _execution_timestamp(self):
         previous, following, normalized = self._dag.previous_schedule(self._ts), self._dag.following_schedule(

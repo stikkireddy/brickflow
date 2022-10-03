@@ -135,8 +135,9 @@ class TaskSettings:
         )
 
     def to_tf_dict(self):
+        email_not = self._email_notifications.to_tf_dict() if self._email_notifications is not None else {}
         return {
-            "email_notifications": self._email_notifications.to_tf_dict() if self._email_notifications is not None else {},
+            "email_notifications": email_not,
             "timeout_seconds": self._timeout_seconds,
             "max_retries": self._max_retries,
             "min_retry_interval_millis": self._min_retry_interval_millis,
@@ -146,7 +147,8 @@ class TaskSettings:
 
 class Task:
 
-    def __init__(self, task_id, task_func: Callable, workflow: 'Workflow', compute: 'Compute',
+    def __init__(self, task_id, task_func: Callable, workflow: 'Workflow',  # noqa
+                 compute: 'Compute',
                  depends_on: Optional[List[Union[Callable, str]]] = None,
                  task_type: TaskType = TaskType.NOTEBOOK,
                  trigger_rule: BrickflowTriggerRule = BrickflowTriggerRule.ALL_SUCCESS,
@@ -156,7 +158,7 @@ class Task:
         self._task_type = task_type
         self._compute = compute
         self._depends_on = depends_on or []
-        self._workflow: 'Workflow' = workflow
+        self._workflow: 'Workflow' = workflow   # noqa
         self._task_func = task_func
         self._task_id = task_id
 
@@ -194,7 +196,7 @@ class Task:
 
     def get_tf_obj(self, entrypoint):
         from brickflow.tf.databricks import JobTaskNotebookTask
-        if self._task_type == TaskType.NOTEBOOK or self._task_type == TaskType.AIRFLOW_TASK:
+        if self._task_type in [TaskType.NOTEBOOK, TaskType.AIRFLOW_TASK]:
             return JobTaskNotebookTask(
                 notebook_path=entrypoint,
                 base_parameters={**self.builtin_notebook_params, **self.brickflow_default_params,
@@ -213,8 +215,8 @@ class Task:
                                    f"Please fix function def {self._task_func.__name__}{sig}: ..."
 
         valid_case = spec.args == [] and spec.varargs is None and spec.defaults is None
-        for k, v in spec.kwonlydefaults.items():
-            if not (isinstance(v, numbers.Number) or isinstance(v, str) or v is None):
+        for _, v in spec.kwonlydefaults.items():
+            if not (isinstance(v, (numbers.Number, str)) or v is None):
                 raise InvalidTaskSignatureDefinition(kwargs_default_error_msg)
         if valid_case:
             return
@@ -240,8 +242,9 @@ class Task:
                         node_skip_checks.append(True)
                     else:
                         node_skip_checks.append(False)
-                except Exception as e:
+                except Exception:
                     # ignore errors as it probably doesnt exist
+                    # TODO: log errors
                     node_skip_checks.append(False)
         if not node_skip_checks:
             return False
@@ -253,11 +256,10 @@ class Task:
     @with_brickflow_logger
     def execute(self):
         if self.should_skip() is True:
-            logging.info(f"Skipping task... {self.name}")
+            logging.info("Skipping task... %s", self.name)
             ctx.task_coms.put(self.name, BRANCH_SKIP_EXCEPT, SKIP_EXCEPT_HACK)
             return
         if self._task_type == TaskType.AIRFLOW_TASK:
-            from brickflow.engine.utils import resolve_py4j_logging
             resolve_py4j_logging()
             self._workflow.airflow_dag.execute(task_id=self.name)
         else:

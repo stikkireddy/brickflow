@@ -41,40 +41,40 @@ class Compute:
         self.photon_worker = photon or photon_worker
         self.category = category
 
-    def to_node_tf(self, stack: 'TerraformStack'):
-        from cdktf import TerraformStack
-        stack: TerraformStack
-        return DataDatabricksNodeType(stack,
-                                      id_=f"{self.compute_id}_node",
-                                      min_memory_gb=self.min_memory_gb_per_worker,
-                                      category=self.category,
-                                      gb_per_core=self.gb_per_core,
-                                      graviton=self.graviton,
-                                      is_io_cache_enabled=self.delta_cache,
-                                      min_gpus=self.min_gpus_per_worker,
-                                      photon_worker_capable=self.photon_worker,
-                                      photon_driver_capable=self.photon_driver,
-                                      support_port_forwarding=self.support_port_forwarding
-                                      )
-
-    def to_runtime_tf(self, stack: 'TerraformStack'):
-        from cdktf import TerraformStack
-        from brickflow.tf.databricks import DataDatabricksNodeType, DataDatabricksSparkVersion
-        stack: TerraformStack
-        return DataDatabricksSparkVersion(stack,
-                                          id_=f"{self.compute_id}_runtime",
-                                          latest=self.latest,
-                                          long_term_support=self.lts,
-                                          ml=self.ml,
-                                          genomics=self.genomics,
-                                          gpu=self.gpu,
-                                          photon=self.photon_worker,
-                                          graviton=self.graviton,
-                                          beta=self.beta,
-                                          )
-
-    def set_to_default(self):
-        self.compute_id = "default"
+    # def to_node_tf(self, stack: 'TerraformStack'):
+    #     from cdktf import TerraformStack
+    #     stack: TerraformStack
+    #     return DataDatabricksNodeType(stack,
+    #                                   id_=f"{self.compute_id}_node",
+    #                                   min_memory_gb=self.min_memory_gb_per_worker,
+    #                                   category=self.category,
+    #                                   gb_per_core=self.gb_per_core,
+    #                                   graviton=self.graviton,
+    #                                   is_io_cache_enabled=self.delta_cache,
+    #                                   min_gpus=self.min_gpus_per_worker,
+    #                                   photon_worker_capable=self.photon_worker,
+    #                                   photon_driver_capable=self.photon_driver,
+    #                                   support_port_forwarding=self.support_port_forwarding
+    #                                   )
+    #
+    # def to_runtime_tf(self, stack: 'TerraformStack'):
+    #     from cdktf import TerraformStack
+    #     from brickflow.tf.databricks import DataDatabricksNodeType, DataDatabricksSparkVersion
+    #     stack: TerraformStack
+    #     return DataDatabricksSparkVersion(stack,
+    #                                       id_=f"{self.compute_id}_runtime",
+    #                                       latest=self.latest,
+    #                                       long_term_support=self.lts,
+    #                                       ml=self.ml,
+    #                                       genomics=self.genomics,
+    #                                       gpu=self.gpu,
+    #                                       photon=self.photon_worker,
+    #                                       graviton=self.graviton,
+    #                                       beta=self.beta,
+    #                                       )
+    #
+    # def set_to_default(self):
+    #     self.compute_id = "default"
 
 
 class SelfDefinedCluster:

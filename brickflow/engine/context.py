@@ -125,7 +125,8 @@ class Context:
     def dbutils_widget_get_or_else(self, key, default):
         try:
             return self.dbutils.widgets.get(key)
-        except Exception as e:
+        except Exception:
+            # todo: log error
             return default
 
     def _get_context_mode(self):
@@ -135,7 +136,8 @@ class Context:
             spark = SparkSession.getActiveSession()
             self._dbutils = DBUtils(spark)
             return ContextMode.databricks
-        except ImportError as e:
+        except ImportError:
+            # todo: log error
             return ContextMode.not_databricks
 
 

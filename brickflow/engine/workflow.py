@@ -77,7 +77,7 @@ class Workflow:
                  default_compute: Compute = Compute(compute_id="default"),
                  compute: List[Compute] = None,
                  existing_cluster=None,
-                 airflow_110_dag: 'DAG' = None,
+                 airflow_110_dag: 'DAG' = None,  # noqa
                  default_task_settings: Optional[TaskSettings] = None,
                  tags: Dict[str, str] = None,
                  max_concurrent_runs: int = 1,
@@ -134,10 +134,10 @@ class Workflow:
         if dag110 is None:
             return None
         try:
-            from airflow import DAG
             from brickflow.adapters.airflow_1_10 import Airflow110DagAdapter
             return Airflow110DagAdapter(dag110, ctx.dbutils)
-        except ImportError as e:
+        except ImportError:
+            # TODO: log error
             return None
 
     @property
@@ -177,8 +177,9 @@ class Workflow:
     def _reset_active_task(self):
         self._active_task = None
 
-    def get_return_value(self, f: Callable, default=None):
-        return default
+    # TODO: is this even needed?
+    # def get_return_value(self, f: Callable, default=None):
+    #     return default
 
     def bind_airflow_task(self, name: str, compute: Optional[Compute] = None,
                           depends_on: Optional[List[Union[Callable, str]]] = None,
@@ -211,10 +212,10 @@ class Workflow:
                                         trigger_rule)
             if depends_on is None:
                 self._graph.add_edge(ROOT_NODE, task_id)
-            elif type(depends_on) == list:
+            elif isinstance(depends_on, list):
                 for t in depends_on:
                     self._graph.add_edge(t.__name__, task_id)
-            elif type(depends_on) == str:
+            elif isinstance(depends_on, str):
                 self._graph.add_edge(depends_on, task_id)
 
             @functools.wraps(f)
