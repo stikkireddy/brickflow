@@ -109,7 +109,7 @@ class Workflow:
         default_compute.set_to_default()
         self._compute = {"default": default_compute}
         self._compute.update((compute and {c.compute_id: c for c in compute}) or {})
-        self._default_task_settings = default_task_settings
+        self._default_task_settings = default_task_settings or TaskSettings()
         # self._compute = (compute and {c.compute_id: c for c in compute}) or {"default": default_compute}
         self._tasks = {}
         self._active_task = None
