@@ -217,10 +217,10 @@ class Project:
             app.synth()
         if self._mode.value == Stage.execute.value:
             wf_id = ctx.dbutils_widget_get_or_else(
-                BrickflowInternalVariables.workflow_id, self._debug_execute_workflow
+                BrickflowInternalVariables.workflow_id.value, self._debug_execute_workflow
             )
             t_id = ctx.dbutils_widget_get_or_else(
-                BrickflowInternalVariables.task_id, self._debug_execute_task
+                BrickflowInternalVariables.task_id.value, self._debug_execute_task
             )
             workflow = self._project.get_workflow(wf_id)
             task = workflow.get_task(t_id)
