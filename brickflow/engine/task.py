@@ -5,15 +5,17 @@ import numbers
 from enum import Enum
 from typing import Callable, List, Dict, Union, Optional
 
-from brickflow.engine import ROOT_NODE
-from brickflow.engine.compute import Compute
 from brickflow.context import (
     BrickflowBuiltInTaskVariables,
     BrickflowInternalVariables,
     ctx,
     BRANCH_SKIP_EXCEPT,
     SKIP_EXCEPT_HACK,
+    TaskComsObjectResult,
+    RETURN_VALUE_KEY,
 )
+from brickflow.engine import ROOT_NODE
+from brickflow.engine.compute import Compute
 from brickflow.engine.utils import resolve_py4j_logging
 
 
@@ -57,6 +59,14 @@ class TaskAlreadyExistsError(Exception):
     pass
 
 
+class UnsupportedBrickflowTriggerRuleError(Exception):
+    pass
+
+
+class InvalidTaskSignatureDefinition(Exception):
+    pass
+
+
 class TaskValueHandler:
     @staticmethod
     def get_task_value_key(f: Callable):
@@ -75,10 +85,6 @@ class BrickflowTriggerRule(Enum):
         return False
 
 
-class UnsupportedBrickflowTriggerRuleError(Exception):
-    pass
-
-
 class TaskType(Enum):
     NOTEBOOK = "notebook_task"
     SQL = "sql_task"
@@ -92,10 +98,6 @@ class TaskParameters:
     @property
     def params(self):
         return self._params
-
-
-class InvalidTaskSignatureDefinition(Exception):
-    pass
 
 
 class EmailNotifications:
@@ -285,10 +287,16 @@ class Task:
         if self.should_skip() is True:
             logging.info("Skipping task... %s", self.name)
             ctx.task_coms.put(self.name, BRANCH_SKIP_EXCEPT, SKIP_EXCEPT_HACK)
-        elif self._task_type == TaskType.AIRFLOW_TASK:
+            ctx.reset_current_task()
+            return
+        return_value = TaskComsObjectResult.NO_RESULTS
+        if self._task_type == TaskType.AIRFLOW_TASK:
             resolve_py4j_logging()
-            self._workflow.airflow_dag.execute(task_id=self.name)
+            resp = self._workflow.airflow_dag.execute(task_id=self.name)
+            if self._workflow.airflow_dag.get_task(self.name).do_xcom_push is True:
+                return_value = resp
         else:
             # TODO: Inject context object
-            self._task_func()
-        ctx.set_current_task(self.name)
+            return_value = self._task_func()
+        ctx.task_coms.put(self.name, RETURN_VALUE_KEY, return_value)
+        ctx.reset_current_task()

@@ -4,8 +4,11 @@ from .context import (
     BrickflowTaskComs,
     BRANCH_SKIP_EXCEPT,
     SKIP_EXCEPT_HACK,
+    RETURN_VALUE_KEY,
     BrickflowInternalVariables,
     BrickflowBuiltInTaskVariables,
+    BrickflowTaskComsObject,
+    TaskComsObjectResult,
 )
 
 __all__ = [
@@ -14,6 +17,9 @@ __all__ = [
     "BrickflowTaskComs",
     "BRANCH_SKIP_EXCEPT",
     "SKIP_EXCEPT_HACK",
+    "RETURN_VALUE_KEY",
     "BrickflowInternalVariables",
     "BrickflowBuiltInTaskVariables",
+    "BrickflowTaskComsObject",
+    "TaskComsObjectResult",
 ]

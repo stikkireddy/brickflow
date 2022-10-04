@@ -1,9 +1,13 @@
+import base64
+import binascii
 import functools
+import pickle
 from enum import Enum
 from typing import Optional, Any, Union, Callable
 
 BRANCH_SKIP_EXCEPT = "branch_skip_except"
 SKIP_EXCEPT_HACK = "brickflow_hack_skip_all"
+RETURN_VALUE_KEY = "return_value"
 
 
 class ContextMode(Enum):
@@ -42,6 +46,48 @@ def bind_variable(builtin: BrickflowBuiltInTaskVariables):
     return wrapper
 
 
+class TaskComsObjectResult(Enum):
+    NO_RESULTS = "NO_RESULTS"
+
+
+class BrickflowTaskComsObject:
+    # Use to encode any hashable value into bytes and then pickle.unloads
+    class _TaskComsObject:
+        def __init__(self, value: Any):
+            self._value = value
+
+        @property
+        def return_value(self):
+            return self._value
+
+    def __init__(self, value):
+        self._task_results = self._TaskComsObject(value)
+
+    @property
+    def return_value(self):
+        return self._task_results.return_value
+
+    @property
+    def to_encoded_value(self) -> str:
+        results_bytes = pickle.dumps(self._task_results)
+        return base64.b64encode(results_bytes).decode("utf-8")
+
+    @classmethod
+    def from_encoded_value(
+        cls, encoded_value: Union[str, bytes]
+    ) -> "BrickflowTaskComsObject":
+        try:
+            _encoded_value = (
+                encoded_value
+                if isinstance(encoded_value, bytes)
+                else encoded_value.encode("utf-8")
+            )
+            b64_bytes = base64.b64decode(_encoded_value)
+            return cls(pickle.loads(b64_bytes).return_value)
+        except binascii.Error:
+            return cls(encoded_value)
+
+
 class BrickflowTaskComsDict:
     def __init__(self, task_id, task_coms: "BrickflowTaskComs"):
         self._task_id = task_id
@@ -61,23 +107,30 @@ class BrickflowTaskComs:
     def _key(task_id, key):
         return f"{task_id}::{key}"
 
-    def put(self, task_id, key, value):
+    def put(self, task_id, key, value: Any):
+        encoded_value = BrickflowTaskComsObject(value).to_encoded_value
         if self._dbutils is not None:
-            self._dbutils.jobs.taskValues.set(key, value)
+            self._dbutils.jobs.taskValues.set(key, encoded_value)
         else:
             # TODO: logging using local task coms
-            self._storage[self._key(task_id, key)] = value
+            self._storage[self._key(task_id, key)] = encoded_value
 
     def get(self, task_id, key=None):
         if key is None:
             return BrickflowTaskComsDict(task_id=task_id, task_coms=self)
         if self._dbutils is not None:
-            return self._dbutils.jobs.taskValues.get(
+            encoded_value = self._dbutils.jobs.taskValues.get(
                 key=key, taskKey=task_id, debugValue="debug"
             )
+            return BrickflowTaskComsObject.from_encoded_value(
+                encoded_value
+            ).return_value
         else:
             # TODO: logging using local task coms
-            return self._storage[self._key(task_id, key)]
+            encoded_value = self._storage[self._key(task_id, key)]
+            return BrickflowTaskComsObject.from_encoded_value(
+                encoded_value
+            ).return_value
 
 
 class Context:
@@ -96,8 +149,12 @@ class Context:
     def set_current_task(self, task_key):
         self._current_task = task_key
 
-    def reset_current_task(self, task_key):
-        self._current_task = task_key
+    def reset_current_task(self):
+        self._current_task = None
+
+    def get_return_value(self, task_key: Union[str, Callable]):
+        task_key = task_key.__name__ if callable(task_key) else task_key
+        return self.task_coms.get(task_key, RETURN_VALUE_KEY)
 
     def skip_all_except(self, branch_task: Union[Callable, str]):
         branch_task_key = (

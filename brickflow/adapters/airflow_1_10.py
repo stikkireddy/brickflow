@@ -323,10 +323,10 @@ class Airflow110DagAdapter(object):
         env.globals.update({"macros": macros, "ti": task_context})
 
         task.render_template_fields(task_context, jinja_env=env)
-        resp = task.execute(context=task_context)
-        if task.do_xcom_push is True:
-            task_context["ti"].xcom_push("return_value", resp)
-        return resp
+        return task.execute(context=task_context)
+        # if task.do_xcom_push is True:
+        #     task_context["ti"].xcom_push("return_value", resp)
+        # return resp
 
     def _create_task_context(self, task_id, task):
         execution_ts = self._execution_timestamp()
