@@ -10,16 +10,18 @@ python = "^3.8"
 python-decouple = ">=3.6"
 networkx = ">=2"
 
-apache-airflow = {version = "==1.10.15", optional = true }
-markupsafe = {version = "==2.0.1",  optional = true }
+#apache-airflow = {version = "==1.10.15", optional = true }
+#markupsafe = {version = "==2.0.1",  optional = true }
 # conflicts with apache-airflow which, I would rather skip cdktf
 #cdktf = {version = ">=0.12.3",  optional = true }
 
 
-[tool.poetry.extras]
-airflow_110 = ["apache-airflow", "markupsafe"]
+#[tool.poetry.extras]
+#airflow_110 = ["apache-airflow", "markupsafe"]
 
-#[tool.poetry.group.dev.dependencies]
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.1.3"
+coverage = "^6.5.0"
 #black = "^22.8.0"
 #prospector = "^1.7.7"
 
@@ -33,3 +35,6 @@ enable = true
 vcs = "git"
 bump = true
 style = "semver"
+
+[tool.coverage.run]
+omit = [".*", "*/site-packages/*", "tests/*"]

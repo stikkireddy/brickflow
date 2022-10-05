@@ -37,6 +37,7 @@ def bind_variable(builtin: BrickflowBuiltInTaskVariables):
         def func(*args, **kwargs):
             _self: Context = args[0]
             debug = kwargs["debug"]
+            f(*args, **kwargs) # no-op
             if _self.dbutils is not None:
                 return _self.dbutils_widget_get_or_else(builtin.value, debug)
             return debug
@@ -99,7 +100,7 @@ class BrickflowTaskComsDict:
 
 
 class BrickflowTaskComs:
-    def __init__(self, dbutils):
+    def __init__(self, dbutils=None):
         self._storage = {}
         self._dbutils = dbutils
 
@@ -142,10 +143,14 @@ class Context:
     def __init__(self):
         # Order of init matters todo: fix this
         self._dbutils: Optional[Any] = None
-
-        self._mode = self._get_context_mode()
-        self._task_coms = BrickflowTaskComs(self._dbutils)
+        self._task_coms = None
         self._current_task = None
+        self._configure()
+
+    def _configure(self):
+        # testing purposes only
+        self._configure_dbutils()
+        self._task_coms = BrickflowTaskComs(self._dbutils)
 
     @property
     def current_task(self):
@@ -213,7 +218,7 @@ class Context:
             # todo: log error
             return default
 
-    def _get_context_mode(self):
+    def _configure_dbutils(self):
         try:
             from pyspark.dbutils import DBUtils
             from pyspark.sql import SparkSession
