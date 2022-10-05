@@ -2,8 +2,9 @@ import functools
 import inspect
 import logging
 import numbers
+from dataclasses import dataclass
 from enum import Enum
-from typing import Callable, List, Dict, Union, Optional
+from typing import Callable, List, Dict, Union, Optional, Any
 
 from brickflow.context import (
     BrickflowBuiltInTaskVariables,
@@ -16,7 +17,6 @@ from brickflow.context import (
 )
 from brickflow.engine import ROOT_NODE
 from brickflow.engine.compute import Compute
-from brickflow.engine.utils import resolve_py4j_logging
 
 
 def with_brickflow_logger(f):
@@ -35,7 +35,6 @@ def with_brickflow_logger(f):
                 f"[%(asctime)s] [%(levelname)s] [brickflow:{_self.name}] {{%(module)s.py:%(lineno)d}} - %(message)s"
             )
         )
-        resolve_py4j_logging()
         resp = f(*args, **kwargs)
 
         logger.handlers = []
@@ -88,7 +87,7 @@ class BrickflowTriggerRule(Enum):
 class TaskType(Enum):
     NOTEBOOK = "notebook_task"
     SQL = "sql_task"
-    AIRFLOW_TASK = "airflow_task"
+    CUSTOM_PYTHON_TASK = "custom_python_task"
 
 
 class TaskParameters:
@@ -161,6 +160,13 @@ class TaskSettings:
         }
 
 
+@dataclass
+class CustomTaskResponse:
+
+    response: Any
+    push_return_value: bool = True
+
+
 class Task:
     def __init__(
         self,
@@ -172,7 +178,9 @@ class Task:
         task_type: TaskType = TaskType.NOTEBOOK,
         trigger_rule: BrickflowTriggerRule = BrickflowTriggerRule.ALL_SUCCESS,
         task_settings: Optional[TaskSettings] = None,
+        custom_execute_callback: Callable = None,
     ):
+        self._custom_execute_callback = custom_execute_callback
         self._task_settings = task_settings
         self._trigger_rule = trigger_rule
         self._task_type = task_type
@@ -217,7 +225,7 @@ class Task:
     def get_tf_obj(self, entrypoint):
         from brickflow.tf.databricks import JobTaskNotebookTask
 
-        if self._task_type in [TaskType.NOTEBOOK, TaskType.AIRFLOW_TASK]:
+        if self._task_type in [TaskType.NOTEBOOK, TaskType.CUSTOM_PYTHON_TASK]:
             return JobTaskNotebookTask(
                 notebook_path=entrypoint,
                 base_parameters={
@@ -290,11 +298,10 @@ class Task:
             ctx.reset_current_task()
             return
         return_value = TaskComsObjectResult.NO_RESULTS
-        if self._task_type == TaskType.AIRFLOW_TASK:
-            resolve_py4j_logging()
-            resp = self._workflow.airflow_dag.execute(task_id=self.name)
-            if self._workflow.airflow_dag.get_task(self.name).do_xcom_push is True:
-                return_value = resp
+        if self._task_type == TaskType.CUSTOM_PYTHON_TASK:
+            resp: CustomTaskResponse = self._custom_execute_callback(self)
+            if resp.push_return_value is True:
+                return_value = resp.response
         else:
             # TODO: Inject context object
             return_value = self._task_func()

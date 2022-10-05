@@ -1,12 +1,10 @@
 black-check:
 	@black --check brickflow/engine
-	@black brickflow/context
-	@black --check brickflow/adapters
+	@black --check brickflow/context
 
-lint:
+fmt:
 	@black brickflow/engine
 	@black brickflow/context
-	@black brickflow/adapters
 
 dev:
 	@poetry install --all-extras

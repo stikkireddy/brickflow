@@ -1,3 +1,5 @@
+import inspect
+import os
 from enum import Enum
 from typing import Dict, Callable
 
@@ -109,7 +111,7 @@ class _Project:
                 ]
                 tf_task_type = (
                     task.task_type
-                    if task.task_type != TaskType.AIRFLOW_TASK.value
+                    if task.task_type != TaskType.CUSTOM_PYTHON_TASK.value
                     else TaskType.NOTEBOOK.value
                 )
 
@@ -152,6 +154,15 @@ class Stage(Enum):
     execute = "execute"
 
 
+def get_caller_info():
+    # First get the full filename which isnt project.py (the first area where this caller info is called.
+    # This should work most of the time.
+    _cwd = str(os.getcwd())
+    for i in inspect.stack():
+        if i.filename not in [__file__, ""]:
+            return os.path.splitext(os.path.relpath(i.filename, _cwd))[0]
+
+
 class Project:
     def __init__(
         self,
@@ -168,7 +179,7 @@ class Project:
             config(BrickFlowEnvVars.BRICKFLOW_MODE.value, default=Stage.execute.value)
         ]
 
-        self._entry_point_path = entry_point_path
+        self._entry_point_path = entry_point_path or get_caller_info()
         self._s3_backend = s3_backend
         if self._mode == Stage.deploy:
             git_ref_default = (
@@ -194,6 +205,7 @@ class Project:
         self._project = None
 
     def __enter__(self):
+        # print("get_caller_info", )
         self._project = _Project(
             self._git_repo,
             self._provider,

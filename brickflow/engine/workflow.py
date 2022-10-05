@@ -12,7 +12,6 @@ from brickflow.engine.task import (
     TaskType,
     TaskAlreadyExistsError,
     BrickflowTriggerRule,
-    UnsupportedBrickflowTriggerRuleError,
     TaskSettings,
 )
 from brickflow.engine.utils import wraps_keyerror
@@ -95,15 +94,11 @@ class Workflow:
         default_compute: Compute = Compute(compute_id="default"),
         compute: List[Compute] = None,
         existing_cluster=None,
-        airflow_110_dag: "DAG" = None,  # noqa
         default_task_settings: Optional[TaskSettings] = None,
         tags: Dict[str, str] = None,
         max_concurrent_runs: int = 1,
         permissions: WorkflowPermissions = None,
     ):
-        # todo: add defaults
-        self._airflow_110_dag = self._get_airflow_dag(airflow_110_dag)
-
         self._existing_cluster = existing_cluster
         self._name = name
         default_compute.set_to_default()
@@ -147,22 +142,6 @@ class Workflow:
     def parents(self, node):
         return self._graph.predecessors(node)
 
-    @staticmethod
-    def _get_airflow_dag(dag110):
-        if dag110 is None:
-            return None
-        try:
-            from brickflow.adapters.airflow_1_10 import Airflow110DagAdapter
-
-            return Airflow110DagAdapter(dag110)
-        except ImportError:
-            # TODO: log error
-            return None
-
-    @property
-    def airflow_dag(self):
-        return self._airflow_110_dag
-
     @property
     def tasks(self) -> Dict[str, Task]:
         return self._tasks
@@ -202,26 +181,13 @@ class Workflow:
     # def get_return_value(self, f: Callable, default=None):
     #     return default
 
-    def bind_airflow_task(
-        self,
-        name: str,
-        compute: Optional[Compute] = None,
-        depends_on: Optional[List[Union[Callable, str]]] = None,
-    ):
-        self._airflow_110_dag.exists(name)
-        trigger_rule = self._airflow_110_dag.get_task(name).trigger_rule
-        if BrickflowTriggerRule.is_valid(trigger_rule) is False:
-            raise UnsupportedBrickflowTriggerRuleError(
-                f"Unsupported trigger rule: {trigger_rule} for task: {name}"
-            )
-        self._airflow_110_dag.validate_task(name)
-        return self.task(
-            name=name,
-            compute=compute,
-            task_type=TaskType.AIRFLOW_TASK,
-            depends_on=depends_on,
-            trigger_rule=BrickflowTriggerRule[trigger_rule.upper()],
-        )
+    def _add_edge_to_graph(self, depends_on, task_id):
+        depends_on_list = depends_on if isinstance(depends_on, list) else [depends_on]
+        for t in depends_on_list:
+            if isinstance(t, str):
+                self._graph.add_edge(t, task_id)
+            else:
+                self._graph.add_edge(t.__name__, task_id)
 
     def task(
         self,
@@ -230,6 +196,7 @@ class Workflow:
         task_type: Optional[TaskType] = TaskType.NOTEBOOK,
         depends_on: Optional[List[Union[Callable, str]]] = None,
         trigger_rule: BrickflowTriggerRule = BrickflowTriggerRule.ALL_SUCCESS,
+        custom_execute_callback: Callable = None,
     ):
         def task_wrapper(f: Callable):
             task_id = name or f.__name__
@@ -246,14 +213,18 @@ class Workflow:
                 depends_on,
                 task_type,
                 trigger_rule,
+                custom_execute_callback=custom_execute_callback,
             )
             if depends_on is None:
                 self._graph.add_edge(ROOT_NODE, task_id)
-            elif isinstance(depends_on, list):
-                for t in depends_on:
-                    self._graph.add_edge(t.__name__, task_id)
-            elif isinstance(depends_on, str):
-                self._graph.add_edge(depends_on, task_id)
+            else:
+                self._add_edge_to_graph(depends_on, task_id)
+
+            # elif isinstance(depends_on, list):
+            #     for t in depends_on:
+            #         self._graph.add_edge(t.__name__, task_id)
+            # elif isinstance(depends_on, str):
+            #     self._graph.add_edge(depends_on, task_id)
 
             @functools.wraps(f)
             def func(*args, **kwargs):
