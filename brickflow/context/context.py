@@ -134,6 +134,11 @@ class BrickflowTaskComs:
 
 
 class Context:
+    def __new__(cls):
+        if not hasattr(cls, "instance"):
+            cls.instance = super(Context, cls).__new__(cls)
+        return cls.instance
+
     def __init__(self):
         # Order of init matters todo: fix this
         self._dbutils: Optional[Any] = None
