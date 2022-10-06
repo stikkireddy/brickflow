@@ -204,3 +204,4 @@ main*.py
 
 # Coverage related
 .coverage
+coverage.xml
