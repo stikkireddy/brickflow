@@ -18,6 +18,7 @@ from brickflow.engine.task import (
 )
 from brickflow.engine.utils import wraps_keyerror
 
+
 # TODO: replace with dataclasses
 class ScimEntity(abc.ABC):
     def __init__(self, name):
@@ -205,6 +206,43 @@ class Workflow:
             else:
                 self._graph.add_edge(t.__name__, task_id)
 
+    def _add_task(
+        self,
+        f: Callable,
+        task_id: str,
+        compute: Optional[Compute] = None,
+        task_type: Optional[TaskType] = TaskType.NOTEBOOK,
+        depends_on: Optional[Union[Callable, str, List[Union[Callable, str]]]] = None,
+        trigger_rule: BrickflowTriggerRule = BrickflowTriggerRule.ALL_SUCCESS,
+        custom_execute_callback: Callable = None,
+    ):
+        if self.task_exists(task_id):
+            raise TaskAlreadyExistsError(
+                f"Task: {task_id} already exists, please rename your function."
+            )
+
+        _depends_on = (
+            [depends_on]
+            if isinstance(depends_on, str) or callable(depends_on)
+            else depends_on
+        )
+        self._tasks[task_id] = Task(
+            task_id,
+            f,
+            self,
+            compute or self._compute,
+            _depends_on,
+            task_type,
+            trigger_rule,
+            custom_execute_callback=custom_execute_callback,
+        )
+
+        # attempt to create task object before adding to graph
+        if _depends_on is None:
+            self._graph.add_edge(ROOT_NODE, task_id)
+        else:
+            self._add_edge_to_graph(_depends_on, task_id)
+
     def task(
         self,
         task_func: Callable = None,
@@ -217,32 +255,16 @@ class Workflow:
     ):
         def task_wrapper(f: Callable):
             task_id = name or f.__name__
-            if self.task_exists(task_id):
-                raise TaskAlreadyExistsError(
-                    f"Task: {task_id} already exists, please rename your function."
-                )
 
-            _depends_on = (
-                [depends_on]
-                if isinstance(depends_on, str) or callable(depends_on)
-                else depends_on
-            )
-            self._tasks[task_id] = Task(
-                task_id,
+            self._add_task(
                 f,
-                self,
-                compute or self._compute,
-                _depends_on,
-                task_type,
-                trigger_rule,
+                task_id,
+                compute=compute,
+                task_type=task_type,
+                depends_on=depends_on,
+                trigger_rule=trigger_rule,
                 custom_execute_callback=custom_execute_callback,
             )
-
-            # attempt to create task object before adding to graph
-            if _depends_on is None:
-                self._graph.add_edge(ROOT_NODE, task_id)
-            else:
-                self._add_edge_to_graph(_depends_on, task_id)
 
             @functools.wraps(f)
             def func(*args, **kwargs):

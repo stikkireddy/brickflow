@@ -5,11 +5,11 @@ from typing import Dict, Callable
 
 from decouple import config
 
-from brickflow.engine import is_git_dirty, get_current_commit
 from brickflow.context import ctx, BrickflowInternalVariables
+from brickflow.engine import is_git_dirty, get_current_commit
+from brickflow.engine.task import TaskType
 from brickflow.engine.utils import wraps_keyerror
 from brickflow.engine.workflow import Workflow
-from brickflow.engine.task import TaskType
 
 
 class WorkflowAlreadyExistsError(Exception):
@@ -66,6 +66,59 @@ class _Project:
     def get_workflow(self, workflow_id):
         return self._workflows[workflow_id]
 
+    def _create_workflow_tasks(self, workflow: Workflow):
+        # Avoid node reqs
+        from brickflow.tf.databricks import (
+            JobTask,
+            JobTaskDependsOn,
+        )
+
+        tasks = []
+        for task_name, task in workflow.tasks.items():
+            depends_on = [
+                JobTaskDependsOn(task_key=f.__name__ if isinstance(f, Callable) else f)
+                for f in task.depends_on
+            ]
+            tf_task_type = (
+                task.task_type
+                if task.task_type != TaskType.CUSTOM_PYTHON_TASK.value
+                else TaskType.NOTEBOOK.value
+            )
+
+            task_settings = workflow.default_task_settings.merge(task.task_settings)
+            tasks.append(
+                JobTask(
+                    **{
+                        tf_task_type: task.get_tf_obj(self._entry_point_path),
+                        **task_settings.to_tf_dict(),
+                    },
+                    depends_on=depends_on,
+                    task_key=task_name,
+                    existing_cluster_id=workflow.existing_cluster_id,
+                )
+            )
+        tasks.sort(key=lambda t: t.task_key)
+        return tasks
+
+    def _create_workflow_permissions(
+        self, stack, workflow: Workflow, job_obj: "Job"  # noqa
+    ):
+        # Avoid node reqs
+        from brickflow.tf.databricks import (
+            Permissions,
+            PermissionsAccessControl,
+        )
+
+        return Permissions(
+            stack,
+            id_=f"{workflow.name}_permissions",
+            job_id=job_obj.id,
+            access_control=[
+                PermissionsAccessControl(**i)
+                for i in workflow.permissions.to_access_controls()
+            ],
+        )
+
     def generate_tf(self, app, id_):
         if (
             is_git_dirty()
@@ -82,10 +135,6 @@ class _Project:
             DatabricksProvider,
             Job,
             JobGitSource,
-            JobTask,
-            JobTaskDependsOn,
-            Permissions,
-            PermissionsAccessControl,
         )
 
         stack = TerraformStack(app, id_)
@@ -103,33 +152,8 @@ class _Project:
             git_conf = JobGitSource(
                 url=self._git_repo, provider=self._provider, **{ref_type: ref_value}
             )
-            tasks = []
-            for task_name, task in workflow.tasks.items():
-                depends_on = [
-                    JobTaskDependsOn(
-                        task_key=f.__name__ if isinstance(f, Callable) else f
-                    )
-                    for f in task.depends_on
-                ]
-                tf_task_type = (
-                    task.task_type
-                    if task.task_type != TaskType.CUSTOM_PYTHON_TASK.value
-                    else TaskType.NOTEBOOK.value
-                )
-
-                task_settings = workflow.default_task_settings.merge(task.task_settings)
-                tasks.append(
-                    JobTask(
-                        **{
-                            tf_task_type: task.get_tf_obj(self._entry_point_path),
-                            **task_settings.to_tf_dict(),
-                        },
-                        depends_on=depends_on,
-                        task_key=task_name,
-                        existing_cluster_id=workflow.existing_cluster_id,
-                    )
-                )
-            tasks.sort(key=lambda t: t.task_key)
+            # tasks = []
+            tasks = self._create_workflow_tasks(workflow)
             job = Job(
                 stack,
                 id_=workflow_name,
@@ -140,15 +164,7 @@ class _Project:
                 max_concurrent_runs=workflow.max_concurrent_runs,
             )
             if workflow.permissions.to_access_controls():
-                Permissions(
-                    stack,
-                    id_=f"{workflow_name}_permissions",
-                    job_id=job.id,
-                    access_control=[
-                        PermissionsAccessControl(**i)
-                        for i in workflow.permissions.to_access_controls()
-                    ],
-                )
+                self._create_workflow_permissions(stack, workflow, job)
 
 
 class Stage(Enum):
