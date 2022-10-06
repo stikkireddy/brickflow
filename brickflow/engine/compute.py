@@ -79,17 +79,17 @@ class Compute:
         self.compute_id = "default"
 
 
-class SelfDefinedCluster:
-    def __init__(
-        self,
-        node_type_id: str,
-        driver_node_type_id: str,
-        min_workers: int,
-        max_workers: int,
-        photon: bool,
-    ):
-        self.photon = photon
-        self.max_workers = max_workers
-        self.min_workers = min_workers
-        self.driver_node_type_id = driver_node_type_id
-        self.node_type_id = node_type_id
+# class SelfDefinedCluster:
+#     def __init__(
+#         self,
+#         node_type_id: str,
+#         driver_node_type_id: str,
+#         min_workers: int,
+#         max_workers: int,
+#         photon: bool,
+#     ):
+#         self.photon = photon
+#         self.max_workers = max_workers
+#         self.min_workers = min_workers
+#         self.driver_node_type_id = driver_node_type_id
+#         self.node_type_id = node_type_id

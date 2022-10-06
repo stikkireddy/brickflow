@@ -203,11 +203,9 @@ class Project:
         self._debug_execute_task = debug_execute_task
         self._debug_execute_workflow = debug_execute_workflow
         self._name = name
-        # self._app: Optional['App'] = None
         self._project = None
 
     def __enter__(self):
-        # print("get_caller_info", )
         self._project = _Project(
             self._git_repo,
             self._provider,
@@ -216,7 +214,6 @@ class Project:
             self._entry_point_path,
         )
         return self._project
-        # return _Project()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self._mode.value == Stage.deploy.value:
