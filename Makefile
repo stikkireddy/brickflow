@@ -17,7 +17,11 @@ check: black-check
 	@poetry run prospector --profile prospector.yaml
 
 cov:
-	@poetry run coverage run -m pytest && poetry run coverage report -m && poetry run coverage xml
+	@poetry run coverage run --source=brickflow --omit "brickflow/sample_dags/*,brickflow/tf/*" -m pytest && \
+	poetry run coverage report -m && \
+	poetry run coverage xml
 
 coverage:
-	@poetry run coverage run -m pytest && poetry run coverage report -m && poetry run coverage html
+	@poetry run coverage run --source=brickflow --omit "brickflow/sample_dags/*,brickflow/tf/*" -m pytest && \
+	poetry run coverage report -m && \
+	poetry run coverage html
