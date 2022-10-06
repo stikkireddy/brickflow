@@ -1,20 +1,20 @@
 black-check:
-	@black --check brickflow/engine
-	@black --check brickflow/context
-	@black --check brickflow/hints
-	@black --check tests
+	@poetry run black --check brickflow/engine
+	@poetry run black --check brickflow/context
+	@poetry run black --check brickflow/hints
+	@poetry run black --check tests
 
 fmt:
-	@black brickflow/engine
-	@black brickflow/context
-	@black brickflow/hints
-	@black tests
+	@poetry run black brickflow/engine
+	@poetry run black brickflow/context
+	@poetry run black brickflow/hints
+	@poetry run black tests
 
 dev:
 	@poetry install --all-extras
 
 check: black-check
-	@prospector --profile prospector.yaml
+	@poetry run prospector --profile prospector.yaml
 
 cov:
 	@poetry run coverage run -m pytest && poetry run coverage report -m && poetry run coverage xml
