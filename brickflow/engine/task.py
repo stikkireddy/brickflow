@@ -24,6 +24,7 @@ def with_brickflow_logger(f):
     def func(*args, **kwargs):
         _self = args[0]
         logger = logging.getLogger()  # Logger
+        logger.setLevel(logging.INFO)
         back_up_logging_handlers = logger.handlers
         logger.handlers = []
         logger_handler = logging.StreamHandler()  # Handler for the logger
@@ -66,37 +67,19 @@ class InvalidTaskSignatureDefinition(Exception):
     pass
 
 
-class TaskValueHandler:
-    @staticmethod
-    def get_task_value_key(f: Callable):
-        pass
+class NoCallableTaskError(Exception):
+    pass
 
 
 class BrickflowTriggerRule(Enum):
     ALL_SUCCESS = "all_success"
     NONE_FAILED = "none_failed"
 
-    @classmethod
-    def is_valid(cls, trigger_rule):
-        for k in cls:
-            if trigger_rule == k.value:
-                return True
-        return False
-
 
 class TaskType(Enum):
     NOTEBOOK = "notebook_task"
     SQL = "sql_task"
     CUSTOM_PYTHON_TASK = "custom_python_task"
-
-
-class TaskParameters:
-    def __init__(self, params):
-        self._params = params
-
-    @property
-    def params(self):
-        return self._params
 
 
 class EmailNotifications:
@@ -125,7 +108,7 @@ class TaskSettings:
         timeout_seconds: int = None,
         max_retries: int = None,
         min_retry_interval_millis: int = None,
-        retry_on_timeout: int = None,
+        retry_on_timeout: bool = None,
     ):
         self._retry_on_timeout = retry_on_timeout
         self._min_retry_interval_millis = min_retry_interval_millis
@@ -133,7 +116,7 @@ class TaskSettings:
         self._timeout_seconds = timeout_seconds
         self._email_notifications = email_notifications
 
-    def merge(self, other: "TaskSettings"):
+    def merge(self, other: "TaskSettings") -> "TaskSettings":
         # overrides top level values
         if other is None:
             return self
@@ -162,7 +145,6 @@ class TaskSettings:
 
 @dataclass
 class CustomTaskResponse:
-
     response: Any
     push_return_value: bool = True
 
@@ -173,7 +155,7 @@ class Task:
         task_id,
         task_func: Callable,
         workflow: "Workflow",  # noqa
-        compute: "Compute",
+        compute: Optional["Compute"],
         depends_on: Optional[List[Union[Callable, str]]] = None,
         task_type: TaskType = TaskType.NOTEBOOK,
         trigger_rule: BrickflowTriggerRule = BrickflowTriggerRule.ALL_SUCCESS,
@@ -189,6 +171,8 @@ class Task:
         self._workflow: "Workflow" = workflow  # noqa
         self._task_func = task_func
         self._task_id = task_id
+
+        self.is_valid_task_signature()
 
     @property
     def task_settings(self):
@@ -235,6 +219,7 @@ class Task:
                 },
             )
 
+    # TODO: error if star isn't there
     def is_valid_task_signature(self):
         # only supports kwonlyargs with defaults
         spec: inspect.FullArgSpec = inspect.getfullargspec(self._task_func)
@@ -251,7 +236,7 @@ class Task:
         )
 
         valid_case = spec.args == [] and spec.varargs is None and spec.defaults is None
-        for _, v in spec.kwonlydefaults.items():
+        for _, v in (spec.kwonlydefaults or {}).items():
             if not (isinstance(v, (numbers.Number, str)) or v is None):
                 raise InvalidTaskSignatureDefinition(kwargs_default_error_msg)
         if valid_case:
@@ -307,3 +292,4 @@ class Task:
             return_value = self._task_func()
         ctx.task_coms.put(self.name, RETURN_VALUE_KEY, return_value)
         ctx.reset_current_task()
+        return return_value

@@ -1,5 +1,6 @@
+import abc
 import functools
-from typing import Callable, List, Optional, Dict, Union
+from typing import Callable, List, Optional, Dict, Union, Iterator
 
 import networkx as nx
 
@@ -13,11 +14,12 @@ from brickflow.engine.task import (
     TaskAlreadyExistsError,
     BrickflowTriggerRule,
     TaskSettings,
+    NoCallableTaskError,
 )
 from brickflow.engine.utils import wraps_keyerror
 
-
-class ScimEntity:
+# TODO: replace with dataclasses
+class ScimEntity(abc.ABC):
     def __init__(self, name):
         self._name = name
 
@@ -34,7 +36,8 @@ class ScimEntity:
     def __hash__(self):
         return hash(self.__class__.__name__ + self.name)
 
-    def to_access_control(self):
+    @abc.abstractmethod
+    def to_access_control(self):  # pragma: no cover
         pass
 
 
@@ -68,6 +71,7 @@ class WorkflowPermissions:
 
     def to_access_controls(self):
         access_controls = []
+        # TODO: Permissions as ENUM
         if self.owner is not None:
             access_controls.append(
                 {"permission_level": "IS_OWNER", **self.owner.to_access_control()}
@@ -78,11 +82,11 @@ class WorkflowPermissions:
             )
         for principal in list(set(self.can_manage_run)):
             access_controls.append(
-                {"permission_level": "CAN_MANAGE", **principal.to_access_control()}
+                {"permission_level": "CAN_MANAGE_RUN", **principal.to_access_control()}
             )
         for principal in list(set(self.can_view)):
             access_controls.append(
-                {"permission_level": "CAN_MANAGE", **principal.to_access_control()}
+                {"permission_level": "CAN_VIEW", **principal.to_access_control()}
             )
         return access_controls
 
@@ -134,7 +138,11 @@ class Workflow:
     def bfs_layers(self):
         return list(nx.bfs_layers(self._graph, ROOT_NODE))[1:]
 
-    def bfs_task_iter(self):
+    def task_iter(self) -> Iterator[Task]:
+        for task in self.bfs_task_iter():
+            yield task
+
+    def bfs_task_iter(self) -> Iterator[Task]:
         for layer in self.bfs_layers:
             for task_key in layer:
                 yield self.get_task(task_key)
@@ -154,7 +162,8 @@ class Workflow:
     def name(self):
         return self._name
 
-    def get_default_compute(self):
+    @property
+    def default_compute(self):
         return self._compute["default"]
 
     def check_no_active_task(self):
@@ -167,6 +176,12 @@ class Workflow:
     @wraps_keyerror(TaskNotFoundError, "Unable to find task: ")
     def get_task(self, task_id) -> Task:
         return self._tasks[task_id]
+
+    @wraps_keyerror(TaskNotFoundError, "Unable to find task: ")
+    def pop_task(self, task_id):
+        # Pop from dict and graph
+        self._tasks.pop(task_id)
+        self._graph.remove_node(task_id)
 
     def task_exists(self, task_id):
         return task_id in self._tasks
@@ -181,6 +196,7 @@ class Workflow:
     # def get_return_value(self, f: Callable, default=None):
     #     return default
 
+    @functools.singledispatch
     def _add_edge_to_graph(self, depends_on, task_id):
         depends_on_list = depends_on if isinstance(depends_on, list) else [depends_on]
         for t in depends_on_list:
@@ -191,10 +207,11 @@ class Workflow:
 
     def task(
         self,
+        task_func: Callable = None,
         name: str = None,
         compute: Optional[Compute] = None,
         task_type: Optional[TaskType] = TaskType.NOTEBOOK,
-        depends_on: Optional[List[Union[Callable, str]]] = None,
+        depends_on: Optional[Union[Callable, str, List[Union[Callable, str]]]] = None,
         trigger_rule: BrickflowTriggerRule = BrickflowTriggerRule.ALL_SUCCESS,
         custom_execute_callback: Callable = None,
     ):
@@ -205,26 +222,27 @@ class Workflow:
                     f"Task: {task_id} already exists, please rename your function."
                 )
 
+            _depends_on = (
+                [depends_on]
+                if isinstance(depends_on, str) or callable(depends_on)
+                else depends_on
+            )
             self._tasks[task_id] = Task(
                 task_id,
                 f,
                 self,
                 compute or self._compute,
-                depends_on,
+                _depends_on,
                 task_type,
                 trigger_rule,
                 custom_execute_callback=custom_execute_callback,
             )
-            if depends_on is None:
+
+            # attempt to create task object before adding to graph
+            if _depends_on is None:
                 self._graph.add_edge(ROOT_NODE, task_id)
             else:
-                self._add_edge_to_graph(depends_on, task_id)
-
-            # elif isinstance(depends_on, list):
-            #     for t in depends_on:
-            #         self._graph.add_edge(t.__name__, task_id)
-            # elif isinstance(depends_on, str):
-            #     self._graph.add_edge(depends_on, task_id)
+                self._add_edge_to_graph(_depends_on, task_id)
 
             @functools.wraps(f)
             def func(*args, **kwargs):
@@ -240,5 +258,13 @@ class Workflow:
                     self._reset_active_task()
 
             return func
+
+        if task_func is not None:
+            if callable(task_func):
+                return task_wrapper(task_func)
+            else:
+                raise NoCallableTaskError(
+                    "Please use task decorator against a callable function."
+                )
 
         return task_wrapper

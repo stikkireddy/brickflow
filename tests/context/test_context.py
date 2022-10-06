@@ -4,8 +4,16 @@ import pickle
 import sys
 from unittest.mock import Mock
 
-from brickflow.context import BrickflowTaskComsObject, BrickflowTaskComs, ctx, Context, RETURN_VALUE_KEY, \
-    BRANCH_SKIP_EXCEPT, SKIP_EXCEPT_HACK, BrickflowBuiltInTaskVariables
+from brickflow.context import (
+    BrickflowTaskComsObject,
+    BrickflowTaskComs,
+    ctx,
+    Context,
+    RETURN_VALUE_KEY,
+    BRANCH_SKIP_EXCEPT,
+    SKIP_EXCEPT_HACK,
+    BrickflowBuiltInTaskVariables,
+)
 
 
 def reset_ctx(f):
@@ -23,18 +31,21 @@ def fake_task():
 
 
 class TestContext:
-
     def test_brickflow_task_comms_obj(self):
         task_value = "hello-world"
         hidden_comms_obj = BrickflowTaskComsObject._TaskComsObject(task_value)
-        b64_data = base64.b64encode(
-            pickle.dumps(hidden_comms_obj)
-        ).decode("utf-8")
+        b64_data = base64.b64encode(pickle.dumps(hidden_comms_obj)).decode("utf-8")
         comms_obj = BrickflowTaskComsObject(task_value)
         assert comms_obj.to_encoded_value == b64_data
         assert comms_obj.return_value == task_value
-        assert BrickflowTaskComsObject.from_encoded_value(b64_data).return_value == task_value
-        assert BrickflowTaskComsObject.from_encoded_value(task_value).return_value == task_value
+        assert (
+            BrickflowTaskComsObject.from_encoded_value(b64_data).return_value
+            == task_value
+        )
+        assert (
+            BrickflowTaskComsObject.from_encoded_value(task_value).return_value
+            == task_value
+        )
 
     def test_brickflow_task_comms(self):
         task_comms = BrickflowTaskComs()
@@ -60,11 +71,13 @@ class TestContext:
         dbutils_mock.jobs.taskValues.get.return_value = task_comms_v1.to_encoded_value
         task_comms.put(task_id, key, value1)
         dbutils_mock.jobs.taskValues.set.assert_called_once_with(
-            f"{key}", task_comms_v1.to_encoded_value)
+            f"{key}", task_comms_v1.to_encoded_value
+        )
         assert task_comms.get(task_id, key) == value1
         task_comms.put(task_id, key, value2)
         dbutils_mock.jobs.taskValues.set.assert_called_with(
-            f"{key}", task_comms_v2.to_encoded_value)
+            f"{key}", task_comms_v2.to_encoded_value
+        )
         dbutils_mock.jobs.taskValues.get.return_value = task_comms_v2.to_encoded_value
         assert task_comms.get(task_id, key) == value2
         assert task_comms.get(task_id)[key] == value2
@@ -103,16 +116,19 @@ class TestContext:
         ctx.skip_all_except(task_key)
         task_coms_mock.put.assert_called_with(None, BRANCH_SKIP_EXCEPT, task_key)
         ctx.skip_all_except(fake_task)
-        task_coms_mock.put.assert_called_with(None, BRANCH_SKIP_EXCEPT, fake_task.__name__)
+        task_coms_mock.put.assert_called_with(
+            None, BRANCH_SKIP_EXCEPT, fake_task.__name__
+        )
 
         ctx.skip_all_following()
-        task_coms_mock.put.assert_called_with(None, BRANCH_SKIP_EXCEPT, SKIP_EXCEPT_HACK)
+        task_coms_mock.put.assert_called_with(
+            None, BRANCH_SKIP_EXCEPT, SKIP_EXCEPT_HACK
+        )
 
     def test_dbutils_widget_get_or_else(self):
         key = "random-key"
         value = "default"
         assert ctx.dbutils_widget_get_or_else(key, value) == value
-
 
     def test_configure_dbutils(self):
         dbutils_class_mock = Mock()
@@ -120,14 +136,14 @@ class TestContext:
         pyspark = Mock()
         pyspark_dbutils = Mock()
         pyspark_sql = Mock()
-        sys.modules['pyspark'] = pyspark
-        sys.modules['pyspark.dbutils'] = pyspark_dbutils
-        sys.modules['pyspark.sql'] = pyspark_sql
-        sys.modules['pyspark.dbutils.DBUtils'] = dbutils_class_mock
-        sys.modules['pyspark.sql.SparkSession'] = spark_mock
+        sys.modules["pyspark"] = pyspark
+        sys.modules["pyspark.dbutils"] = pyspark_dbutils
+        sys.modules["pyspark.sql"] = pyspark_sql
+        sys.modules["pyspark.dbutils.DBUtils"] = dbutils_class_mock
+        sys.modules["pyspark.sql.SparkSession"] = spark_mock
         ctx._configure_dbutils()
-        sys.modules.pop('pyspark')
-        sys.modules.pop('pyspark.dbutils')
-        sys.modules.pop('pyspark.sql')
-        sys.modules.pop('pyspark.dbutils.DBUtils')
-        sys.modules.pop('pyspark.sql.SparkSession')
+        sys.modules.pop("pyspark")
+        sys.modules.pop("pyspark.dbutils")
+        sys.modules.pop("pyspark.sql")
+        sys.modules.pop("pyspark.dbutils.DBUtils")
+        sys.modules.pop("pyspark.sql.SparkSession")

@@ -186,11 +186,21 @@ $RECYCLE.BIN/
 
 # End of https://www.toptal.com/developers/gitignore/api/terraform,pycharm+all,macos,windows
 
+# CDKTF
+
 cdktf.out
 cdktf.json
+
+# BUILD
+
 brickflow.egg-info
 .eggs
 dist
 build
+
+# SAMPLES / TESTING
 brickflow/sample_dags
 main*.py
+
+# Coverage related
+.coverage

@@ -10,6 +10,7 @@ SKIP_EXCEPT_HACK = "brickflow_hack_skip_all"
 RETURN_VALUE_KEY = "return_value"
 
 
+# TODO: remove
 class ContextMode(Enum):
     databricks = "databricks"
     not_databricks = "not_databricks"
@@ -37,7 +38,7 @@ def bind_variable(builtin: BrickflowBuiltInTaskVariables):
         def func(*args, **kwargs):
             _self: Context = args[0]
             debug = kwargs["debug"]
-            f(*args, **kwargs) # no-op
+            f(*args, **kwargs)  # no-op
             if _self.dbutils is not None:
                 return _self.dbutils_widget_get_or_else(builtin.value, debug)
             return debug

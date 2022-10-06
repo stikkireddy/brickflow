@@ -12,6 +12,7 @@ ignore-paths:
   - main.py
   - main2.py
   - .eggs
+  - htmlcov
 
 max-line-length: 120
 

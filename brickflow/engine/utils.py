@@ -1,6 +1,9 @@
 import functools
 
+from brickflow.hints import propagate_hint
 
+
+@propagate_hint
 def wraps_keyerror(error_class, msg):
     def wrapper(f):
         @functools.wraps(f)
