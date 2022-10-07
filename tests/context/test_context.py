@@ -129,19 +129,25 @@ class TestContext:
 
     def test_configure_dbutils(self):
         dbutils_class_mock = Mock()
-        spark_mock = Mock()
         pyspark = Mock()
         pyspark_dbutils = Mock()
-        pyspark_sql = Mock()
         sys.modules["pyspark"] = pyspark
         sys.modules["pyspark.dbutils"] = pyspark_dbutils
-        sys.modules["pyspark.sql"] = pyspark_sql
         sys.modules["pyspark.dbutils.DBUtils"] = dbutils_class_mock
-        sys.modules["pyspark.sql.SparkSession"] = spark_mock
         assert ctx._configure_dbutils() == ContextMode.databricks
         sys.modules.pop("pyspark")
         sys.modules.pop("pyspark.dbutils")
-        sys.modules.pop("pyspark.sql")
         sys.modules.pop("pyspark.dbutils.DBUtils")
+
+    def test_configure_spark(self):
+        spark_mock = Mock()
+        pyspark = Mock()
+        pyspark_sql = Mock()
+        sys.modules["pyspark"] = pyspark
+        sys.modules["pyspark.sql"] = pyspark_sql
+        sys.modules["pyspark.sql.SparkSession"] = spark_mock
+        assert ctx._set_spark_session() is None
+        sys.modules.pop("pyspark")
+        sys.modules.pop("pyspark.sql")
         sys.modules.pop("pyspark.sql.SparkSession")
 

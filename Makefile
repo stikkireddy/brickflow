@@ -28,3 +28,7 @@ coverage:
 
 docker:
 	docker build -t brickflow:latest .
+
+poetry-install:
+	@pip install poetry
+	@poetry self add "poetry-dynamic-versioning[plugin]"
