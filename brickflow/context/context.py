@@ -228,6 +228,7 @@ class Context:
     def _set_spark_session(self):
         try:
             from pyspark.sql import SparkSession
+
             self._spark = SparkSession.getActiveSession()
         except ImportError as ie:
             # todo: log error
