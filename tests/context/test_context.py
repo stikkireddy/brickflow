@@ -2,7 +2,9 @@ import base64
 import functools
 import pickle
 import sys
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
+
+import pytest
 
 from brickflow.context import (
     BrickflowTaskComsObject,
@@ -14,6 +16,7 @@ from brickflow.context import (
     SKIP_EXCEPT_HACK,
     BrickflowBuiltInTaskVariables,
 )
+from brickflow.context.context import ContextMode
 
 
 def reset_ctx(f):
@@ -39,12 +42,12 @@ class TestContext:
         assert comms_obj.to_encoded_value == b64_data
         assert comms_obj.return_value == task_value
         assert (
-            BrickflowTaskComsObject.from_encoded_value(b64_data).return_value
-            == task_value
+                BrickflowTaskComsObject.from_encoded_value(b64_data).return_value
+                == task_value
         )
         assert (
-            BrickflowTaskComsObject.from_encoded_value(task_value).return_value
-            == task_value
+                BrickflowTaskComsObject.from_encoded_value(task_value).return_value
+                == task_value
         )
 
     def test_brickflow_task_comms(self):
@@ -82,13 +85,13 @@ class TestContext:
         assert task_comms.get(task_id, key) == value2
         assert task_comms.get(task_id)[key] == value2
 
-    @reset_ctx
-    def test_context_obj(self):
+    # @reset_ctx
+    @patch("brickflow.context.ctx._dbutils")
+    def test_context_obj(self, dbutils: Mock):
         task_key = "hello-world"
         # assert that its a singleton
-        dbutils_mock = Mock()
         assert id(ctx) == id(Context())
-        ctx._dbutils = dbutils_mock
+        ctx._dbutils = dbutils
         assert ctx.current_task is None
         ctx.set_current_task(task_key)
         assert ctx.current_task == task_key
@@ -96,32 +99,30 @@ class TestContext:
         assert ctx.current_task is None
 
         for e in BrickflowBuiltInTaskVariables:
-            dbutils_mock.widgets.get.return_value = "actual"
+            dbutils.widgets.get.return_value = "actual"
             assert getattr(ctx, e.name)(debug="test") == "actual"
-            dbutils_mock.widgets.get.assert_called_with(e.value)
+            dbutils.widgets.get.assert_called_with(e.value)
 
         ctx._dbutils = None
         assert ctx.task_key(debug=task_key) == task_key
 
-    @reset_ctx
-    def test_context_obj_task_coms(self):
-        task_coms_mock = Mock()
+    @patch("brickflow.context.ctx._task_coms")
+    def test_context_obj_task_coms(self, task_coms: Mock):
         task_key = "some_task"
         some_return_value = "some_value"
-        ctx._task_coms = task_coms_mock
-        task_coms_mock.get.return_value = some_return_value
+        task_coms.get.return_value = some_return_value
         assert ctx.get_return_value(task_key) == some_return_value
-        task_coms_mock.get.assert_called_once_with(task_key, RETURN_VALUE_KEY)
+        task_coms.get.assert_called_once_with(task_key, RETURN_VALUE_KEY)
 
         ctx.skip_all_except(task_key)
-        task_coms_mock.put.assert_called_with(None, BRANCH_SKIP_EXCEPT, task_key)
+        task_coms.put.assert_called_with(None, BRANCH_SKIP_EXCEPT, task_key)
         ctx.skip_all_except(fake_task)
-        task_coms_mock.put.assert_called_with(
+        task_coms.put.assert_called_with(
             None, BRANCH_SKIP_EXCEPT, fake_task.__name__
         )
 
         ctx.skip_all_following()
-        task_coms_mock.put.assert_called_with(
+        task_coms.put.assert_called_with(
             None, BRANCH_SKIP_EXCEPT, SKIP_EXCEPT_HACK
         )
 
@@ -141,9 +142,13 @@ class TestContext:
         sys.modules["pyspark.sql"] = pyspark_sql
         sys.modules["pyspark.dbutils.DBUtils"] = dbutils_class_mock
         sys.modules["pyspark.sql.SparkSession"] = spark_mock
-        ctx._configure_dbutils()
+        assert ctx._configure_dbutils() == ContextMode.databricks
         sys.modules.pop("pyspark")
         sys.modules.pop("pyspark.dbutils")
         sys.modules.pop("pyspark.sql")
         sys.modules.pop("pyspark.dbutils.DBUtils")
         sys.modules.pop("pyspark.sql.SparkSession")
+
+    def test_configure_spark_no_spark(self):
+        with pytest.raises(ImportError):
+            ctx._set_spark_session()

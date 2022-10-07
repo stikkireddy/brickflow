@@ -145,6 +145,7 @@ class Context:
     def __init__(self):
         # Order of init matters todo: fix this
         self._dbutils: Optional[Any] = None
+        self._spark: Optional[Any] = None
         self._task_coms = None
         self._current_task = None
         self._configure()
@@ -213,6 +214,10 @@ class Context:
     def dbutils(self):
         return self._dbutils
 
+    @property
+    def spark(self):
+        return self._spark
+
     def dbutils_widget_get_or_else(self, key, debug):
         try:
             return self.dbutils.widgets.get(key)
@@ -220,13 +225,20 @@ class Context:
             # todo: log error
             return debug
 
+    def _set_spark_session(self):
+        try:
+            from pyspark.sql import SparkSession
+            self._spark = SparkSession.getActiveSession()
+        except ImportError as ie:
+            # todo: log error
+            raise ie
+
     def _configure_dbutils(self):
         try:
             from pyspark.dbutils import DBUtils
-            from pyspark.sql import SparkSession
 
-            spark = SparkSession.getActiveSession()
-            self._dbutils = DBUtils(spark)
+            self._set_spark_session()
+            self._dbutils = DBUtils(self.spark)
             return ContextMode.databricks
         except ImportError:
             # todo: log error

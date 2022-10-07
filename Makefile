@@ -25,3 +25,6 @@ coverage:
 	@poetry run coverage run --source=brickflow --omit "brickflow/sample_dags/*,brickflow/tf/*" -m pytest && \
 	poetry run coverage report -m && \
 	poetry run coverage html
+
+docker:
+	docker build -t brickflow:latest .

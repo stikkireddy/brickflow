@@ -1,9 +1,15 @@
 [tool.poetry]
 name = "brickflow"
 version = "0.0.1-pre.42+08bd54b"
-description = ""
+description = "Deploy scalable workflows to databricks."
 authors = ["stikkireddy <sri.tikkireddy@databricks.com>"]
 readme = "README.md"
+license = "MIT"
+homepage = "https://github.com/stikkireddy/brickflow"
+repository = "https://github.com/stikkireddy/brickflow"
+include = [
+    "LICENSE",
+]
 
 [tool.poetry.dependencies]
 python = "^3.8"
@@ -26,7 +32,6 @@ prospector = "^1.7.7"
 [build-system]
 requires = ["poetry-core", "poetry-dynamic-versioning"]
 build-backend = "poetry_dynamic_versioning.backend"
-#build-backend = "poetry.core.masonry.api"
 
 [tool.poetry-dynamic-versioning]
 enable = false
