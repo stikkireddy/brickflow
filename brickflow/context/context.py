@@ -152,6 +152,7 @@ class Context:
 
     def _configure(self):
         # testing purposes only
+        self._set_spark_session()
         self._configure_dbutils()
         self._task_coms = BrickflowTaskComs(self._dbutils)
 
@@ -183,31 +184,31 @@ class Context:
         return self._task_coms
 
     @bind_variable(BrickflowBuiltInTaskVariables.task_key)
-    def task_key(self, *, debug=None):
+    def task_key(self, *, debug):
         pass
 
     @bind_variable(BrickflowBuiltInTaskVariables.task_retry_count)
-    def task_retry_count(self, *, debug=None):
+    def task_retry_count(self, *, debug):
         pass
 
     @bind_variable(BrickflowBuiltInTaskVariables.run_id)
-    def run_id(self, *, debug=None):
+    def run_id(self, *, debug):
         pass
 
     @bind_variable(BrickflowBuiltInTaskVariables.job_id)
-    def job_id(self, *, debug=None):
+    def job_id(self, *, debug):
         pass
 
     @bind_variable(BrickflowBuiltInTaskVariables.parent_run_id)
-    def parent_run_id(self, *, debug=None):
+    def parent_run_id(self, *, debug):
         pass
 
     @bind_variable(BrickflowBuiltInTaskVariables.start_date)
-    def start_date(self, *, debug=None):
+    def start_date(self, *, debug):
         pass
 
     @bind_variable(BrickflowBuiltInTaskVariables.start_time)
-    def start_time(self, *, debug=None):
+    def start_time(self, *, debug):
         pass
 
     @property
@@ -232,13 +233,12 @@ class Context:
             self._spark = SparkSession.getActiveSession()
         except ImportError as ie:
             # todo: log error
-            raise ie
+            pass
 
     def _configure_dbutils(self):
         try:
             from pyspark.dbutils import DBUtils
 
-            self._set_spark_session()
             self._dbutils = DBUtils(self.spark)
             return ContextMode.databricks
         except ImportError:

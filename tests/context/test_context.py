@@ -145,6 +145,3 @@ class TestContext:
         sys.modules.pop("pyspark.dbutils.DBUtils")
         sys.modules.pop("pyspark.sql.SparkSession")
 
-    def test_configure_spark_no_spark(self):
-        with pytest.raises(ImportError):
-            ctx._set_spark_session()
