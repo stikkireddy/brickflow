@@ -209,7 +209,8 @@ class Task:
     def brickflow_default_params(self):
         return {
             BrickflowInternalVariables.workflow_id.value: self._workflow.name,
-            BrickflowInternalVariables.task_id.value: self.name,
+            # 2 braces to escape 1
+            BrickflowInternalVariables.task_id.value: f"{{{{{BrickflowBuiltInTaskVariables.task_key.name}}}}}",
             BrickflowInternalVariables.only_run_tasks.value: "",
         }
 

@@ -47,7 +47,7 @@ class TestTask:
     def test_builtin_default_params(self):
         assert wf.get_task(task_function.__name__).brickflow_default_params == {
             "brickflow_internal_workflow_name": wf.name,
-            "brickflow_internal_task_name": "task_function",
+            "brickflow_internal_task_name": "{{task_key}}",
             "brickflow_internal_only_run_tasks": "",
         }
 
@@ -197,7 +197,7 @@ class TestTask:
                 "brickflow_parent_run_id": "{{parent_run_id}}",
                 "brickflow_task_key": "{{task_key}}",
                 "brickflow_internal_workflow_name": "test",
-                "brickflow_internal_task_name": "task_function",
+                "brickflow_internal_task_name": "{{task_key}}",
                 "brickflow_internal_only_run_tasks": "",
                 "test": "var",
             },
