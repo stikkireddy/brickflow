@@ -1,7 +1,6 @@
 import os
-import subprocess
 from unittest import mock
-from unittest.mock import Mock, call
+from unittest.mock import Mock, call, patch
 
 import pytest
 
@@ -25,9 +24,9 @@ def side_effect(a, b):
 
 
 class TestProject:
-    def test_project_execute(self):
-        dbutils = Mock(side_effect=side_effect)
-        ctx.dbutils_widget_get_or_else = dbutils
+    @patch("brickflow.context.ctx.dbutils_widget_get_or_else")
+    def test_project_execute(self, dbutils):
+        dbutils.side_effect = side_effect
         with Project("test-project") as f:
             f.add_workflow(wf)
         assert ctx.get_return_value(task_key=task_function) == task_function()
@@ -35,14 +34,14 @@ class TestProject:
     @mock.patch.dict(
         os.environ, {BrickFlowEnvVars.BRICKFLOW_MODE.value: Stage.deploy.value}
     )
-    def test_project_deploy(self, mocker):
-        dbutils = Mock(side_effect=side_effect)
-        ctx.dbutils_widget_get_or_else = dbutils
-        mocker.patch("subprocess.check_output")
+    @patch("subprocess.check_output")
+    @patch("brickflow.context.ctx.dbutils_widget_get_or_else")
+    def test_project_deploy(self, dbutils: Mock, subproc: Mock):
+        dbutils.side_effect = side_effect
         git_ref_b = b"a"
         git_repo = "https://github.com/"
         git_provider = "github"
-        subprocess.check_output.return_value = git_ref_b
+        subproc.return_value = git_ref_b
 
         with Project("test-project1", git_repo=git_repo, provider=git_provider) as f:
             f.add_workflow(wf)
@@ -52,7 +51,7 @@ class TestProject:
         assert f._git_repo == git_repo
         assert f._provider == git_provider
 
-        subprocess.check_output.assert_has_calls(
+        subproc.assert_has_calls(
             [  # noqa
                 call(['git log -n 1 --pretty=format:"%H"'], shell=True),
                 call(["git diff --stat"], shell=True),
@@ -63,14 +62,14 @@ class TestProject:
     @mock.patch.dict(
         os.environ, {BrickFlowEnvVars.BRICKFLOW_MODE.value: Stage.deploy.value}
     )
-    def test_project_deploy_is_git_dirty_error(self, mocker):
-        dbutils = Mock(side_effect=side_effect)
-        ctx.dbutils_widget_get_or_else = dbutils
-        mocker.patch("subprocess.check_output")
+    @patch("subprocess.check_output")
+    @patch("brickflow.context.ctx.dbutils_widget_get_or_else")
+    def test_project_deploy_is_git_dirty_error(self, dbutils: Mock, subproc: Mock):
+        dbutils.side_effect = side_effect
         resp = b"some really long path must return git dirty error"
         git_repo = "https://github.com/"
         git_provider = "github"
-        subprocess.check_output.return_value = resp
+        subproc.return_value = resp
 
         with pytest.raises(GitRepoIsDirtyError):
             with Project(
@@ -78,9 +77,9 @@ class TestProject:
             ) as f:
                 f.add_workflow(wf)
 
-    def test_project_workflow_already_exists_error(self):
-        dbutils = Mock(side_effect=side_effect)
-        ctx.dbutils_widget_get_or_else = dbutils
+    @patch("brickflow.context.ctx.dbutils_widget_get_or_else")
+    def test_project_workflow_already_exists_error(self, dbutils):
+        dbutils.side_effect = side_effect
         with pytest.raises(WorkflowAlreadyExistsError):
             with Project("test-project") as f:
                 f.add_workflow(wf)

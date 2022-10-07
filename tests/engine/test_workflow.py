@@ -1,5 +1,3 @@
-import functools
-
 import pytest
 
 from brickflow.engine.task import (
@@ -9,7 +7,6 @@ from brickflow.engine.task import (
     TaskAlreadyExistsError,
     AnotherActiveTaskError,
     NoCallableTaskError,
-    TaskSettings,
     TaskNotFoundError,
 )
 from brickflow.engine.workflow import User, Group, ServicePrincipal

@@ -1,4 +1,4 @@
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -7,6 +7,7 @@ from brickflow.context import (
     BRANCH_SKIP_EXCEPT,
     SKIP_EXCEPT_HACK,
     RETURN_VALUE_KEY,
+    BrickflowInternalVariables,
 )
 from brickflow.engine.task import (
     Task,
@@ -15,7 +16,6 @@ from brickflow.engine.task import (
     TaskSettings,
 )
 from brickflow.tf.databricks import JobTaskNotebookTask
-from tests.context.test_context import reset_ctx
 from tests.engine.sample_workflow import (
     wf,
     task_function,
@@ -48,6 +48,7 @@ class TestTask:
         assert wf.get_task(task_function.__name__).brickflow_default_params == {
             "brickflow_internal_workflow_name": wf.name,
             "brickflow_internal_task_name": "task_function",
+            "brickflow_internal_only_run_tasks": "",
         }
 
     def test_custom_task_params(self):
@@ -89,41 +90,80 @@ class TestTask:
             def _fake_task(*, test=b"test"):
                 pass
 
-    def test_should_skip_false(self):
-        task_coms_mock = Mock()
-        ctx._task_coms = task_coms_mock
+    @patch("brickflow.context.ctx._task_coms")
+    def test_should_skip_false(self, task_coms_mock):
         task_coms_mock.get.return_value = task_function_3.__name__
-        assert wf.get_task(task_function_3.__name__).should_skip() is False
+        skip, reason = wf.get_task(task_function_3.__name__).should_skip()
+        assert skip is False
+        assert reason is None
         task_coms_mock.get.assert_called_once()
         ctx._configure()
 
         task_coms_mock.get.return_value = task_function.__name__
         task_coms_mock.get.side_effect = Exception("error")
-        assert wf.get_task(task_function_3.__name__).should_skip() is False
+        skip, reason = wf.get_task(task_function_3.__name__).should_skip()
+        assert skip is False
+        assert reason is None
         ctx._configure()
 
-        assert wf.get_task(task_function.__name__).should_skip() is False
+        skip, reason = wf.get_task(task_function.__name__).should_skip()
+        assert skip is False
+        assert reason is None
         ctx._configure()
 
-        assert wf.get_task(task_function_4.__name__).should_skip() is False
+        skip, reason = wf.get_task(task_function_4.__name__).should_skip()
+        assert skip is False
+        assert reason is None
         ctx._configure()
 
-    @reset_ctx
-    def test_should_skip_true(self):
-        task_coms_mock = Mock()
-        ctx._task_coms = task_coms_mock
+    @patch("brickflow.context.ctx.dbutils_widget_get_or_else")
+    def test_skip_not_selected_task(self, dbutils):
+        dbutils.return_value = "sometihngelse"
+        skip, reason = wf.get_task(
+            task_function_4.__name__
+        )._skip_because_not_selected()
+        dbutils.assert_called_once_with(
+            BrickflowInternalVariables.only_run_tasks.value, ""
+        )
+        assert skip is True
+        assert reason.startswith(
+            f"This task: {task_function_4.__name__} is not a selected task"
+        )
+        assert wf.get_task(task_function_4.__name__).execute() is None
+
+    @patch("brickflow.context.ctx.dbutils_widget_get_or_else")
+    def test_no_skip_selected_task(self, dbutils):
+        dbutils.return_value = task_function_4.__name__
+        skip, reason = wf.get_task(
+            task_function_4.__name__
+        )._skip_because_not_selected()
+        dbutils.assert_called_once_with(
+            BrickflowInternalVariables.only_run_tasks.value, ""
+        )
+        assert skip is False
+        assert reason is None
+        assert wf.get_task(task_function_4.__name__).execute() == task_function_4()
+
+    @patch("brickflow.engine.task.Task._skip_because_not_selected")
+    @patch("brickflow.context.ctx._task_coms")
+    def test_should_skip_true(
+        self, task_coms_mock: Mock, task_skip_selected_mock: Mock
+    ):
+        task_skip_selected_mock.return_value = (False, None)
         task_coms_mock.get.return_value = task_function_2.__name__
-        assert wf.get_task(task_function_3.__name__).should_skip() is True
+        skip, reason = wf.get_task(task_function_3.__name__).should_skip()
+        assert skip == True
+        assert reason == "All tasks before this were not successful"
         task_coms_mock.get.assert_called_once()
         assert wf.get_task(task_function_3.__name__).execute() is None
         task_coms_mock.put.assert_called_once_with(
             task_function_3.__name__, BRANCH_SKIP_EXCEPT, SKIP_EXCEPT_HACK
         )
 
-    @reset_ctx
-    def test_execute(self):
-        task_coms_mock = Mock()
-        ctx._task_coms = task_coms_mock
+    @patch("brickflow.context.ctx.dbutils_widget_get_or_else")
+    @patch("brickflow.context.ctx._task_coms")
+    def test_execute(self, task_coms_mock: Mock, dbutils: Mock):
+        dbutils.return_value = ""
         resp = wf.get_task(task_function.__name__).execute()
         task_coms_mock.put.assert_called_once_with(
             task_function.__name__, RETURN_VALUE_KEY, task_function()
@@ -131,10 +171,10 @@ class TestTask:
 
         assert resp is task_function()
 
-    @reset_ctx
-    def test_execute_custom(self):
-        task_coms_mock = Mock()
-        ctx._task_coms = task_coms_mock
+    @patch("brickflow.context.ctx.dbutils_widget_get_or_else")
+    @patch("brickflow.context.ctx._task_coms")
+    def test_execute_custom(self, task_coms_mock: Mock, dbutils: Mock):
+        dbutils.return_value = ""
         resp = wf.get_task(custom_python_task_push.__name__).execute()
         task_coms_mock.put.assert_called_once_with(
             custom_python_task_push.__name__,
@@ -158,6 +198,7 @@ class TestTask:
                 "brickflow_task_key": "{{task_key}}",
                 "brickflow_internal_workflow_name": "test",
                 "brickflow_internal_task_name": "task_function",
+                "brickflow_internal_only_run_tasks": "",
                 "test": "var",
             },
         )

@@ -30,6 +30,7 @@ class BrickflowBuiltInTaskVariables(Enum):
 class BrickflowInternalVariables(Enum):
     workflow_id = "brickflow_internal_workflow_name"
     task_id = "brickflow_internal_task_name"
+    only_run_tasks = "brickflow_internal_only_run_tasks"
 
 
 def bind_variable(builtin: BrickflowBuiltInTaskVariables):
@@ -212,12 +213,12 @@ class Context:
     def dbutils(self):
         return self._dbutils
 
-    def dbutils_widget_get_or_else(self, key, default):
+    def dbutils_widget_get_or_else(self, key, debug):
         try:
             return self.dbutils.widgets.get(key)
         except Exception:
             # todo: log error
-            return default
+            return debug
 
     def _configure_dbutils(self):
         try:

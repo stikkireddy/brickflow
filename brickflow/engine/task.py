@@ -4,7 +4,9 @@ import logging
 import numbers
 from dataclasses import dataclass
 from enum import Enum
-from typing import Callable, List, Dict, Union, Optional, Any
+from typing import Callable, List, Dict, Union, Optional, Any, Tuple
+
+from decouple import config
 
 from brickflow.context import (
     BrickflowBuiltInTaskVariables,
@@ -69,6 +71,10 @@ class InvalidTaskSignatureDefinition(Exception):
 
 class NoCallableTaskError(Exception):
     pass
+
+
+class BrickflowTaskEnvVars(Enum):
+    BRICKFLOW_SELECT_TASKS = "BRICKFLOW_SELECT_TASKS"
 
 
 class BrickflowTriggerRule(Enum):
@@ -204,6 +210,7 @@ class Task:
         return {
             BrickflowInternalVariables.workflow_id.value: self._workflow.name,
             BrickflowInternalVariables.task_id.value: self.name,
+            BrickflowInternalVariables.only_run_tasks.value: "",
         }
 
     def get_tf_obj(self, entrypoint):
@@ -251,7 +258,14 @@ class Task:
             return {}
         return {k: str(v) for k, v in spec.kwonlydefaults.items()}
 
-    def should_skip(self):
+    @staticmethod
+    def _get_skip_with_reason(cond, reason):
+        if cond is True:
+            return cond, reason
+        return cond, None
+
+    def should_skip(self) -> Tuple[bool, Optional[str]]:
+        # return true or false and reason
         node_skip_checks = []
         for parent in self.parents:
             if parent != ROOT_NODE:
@@ -268,17 +282,53 @@ class Task:
                     # TODO: log errors
                     node_skip_checks.append(False)
         if not node_skip_checks:
-            return False
+            return False, None
         if self._trigger_rule == BrickflowTriggerRule.ALL_SUCCESS:
-            return any(node_skip_checks)
+            return self._get_skip_with_reason(
+                any(node_skip_checks), "All tasks before this were not successful"
+            )
         if self._trigger_rule == BrickflowTriggerRule.NONE_FAILED:
-            return all(node_skip_checks)
+            return self._get_skip_with_reason(
+                all(node_skip_checks),
+                "At least one task before this were not successful",
+            )
+
+    def _skip_because_not_selected(self) -> Tuple[bool, Optional[str]]:
+        selected_tasks = ctx.dbutils_widget_get_or_else(
+            BrickflowInternalVariables.only_run_tasks.value,
+            config(BrickflowTaskEnvVars.BRICKFLOW_SELECT_TASKS.value, ""),
+        )
+        if selected_tasks is None or selected_tasks == "":
+            return False, None
+        selected_task_list = selected_tasks.split(",")
+        if self.name not in selected_task_list:
+            return (
+                True,
+                f"This task: {self.name} is not a selected task: {selected_task_list}",
+            )
+        return False, None
 
     @with_brickflow_logger
     def execute(self):
+        # Workflow is:
+        #   1. Check to see if there selected tasks and if there are is this task in the list
+        #   2. Check to see if the previous task is skipped and trigger rule.
+        #   3. Check to see if this a custom python task and execute it
+        #   4. Execute the task function
         ctx.set_current_task(self.name)
-        if self.should_skip() is True:
-            logging.info("Skipping task... %s", self.name)
+        _select_task_skip, _select_task_skip_reason = self._skip_because_not_selected()
+        if _select_task_skip is True:
+            # check if this task is skipped due to task selection
+            logging.info(
+                "Skipping task... %s for reason: %s",
+                self.name,
+                _select_task_skip_reason,
+            )
+            ctx.reset_current_task()
+            return
+        _skip, reason = self.should_skip()
+        if _skip is True:
+            logging.info("Skipping task... %s for reason: %s", self.name, reason)
             ctx.task_coms.put(self.name, BRANCH_SKIP_EXCEPT, SKIP_EXCEPT_HACK)
             ctx.reset_current_task()
             return
