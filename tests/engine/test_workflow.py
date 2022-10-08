@@ -32,7 +32,7 @@ class TestWorkflow:
         assert t.name == task_function.__name__
         assert t.task_func is not None
         assert t.workflow == wf
-        assert t.compute == wf._compute
+        assert t.compute == wf.compute
         assert t.depends_on == []
         assert t.task_type == TaskType.NOTEBOOK
         assert t.trigger_rule == BrickflowTriggerRule.ALL_SUCCESS
@@ -67,7 +67,7 @@ class TestWorkflow:
         assert wf.existing_cluster_id is None
 
     def test_default_compute(self):
-        assert wf.default_compute == wf._compute["default"]
+        assert wf.default_compute == wf.compute["default"]
 
     def test_get_tasks(self):
         assert len(wf.tasks) == 7
