@@ -2,8 +2,11 @@ import base64
 import binascii
 import functools
 import pickle
+from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional, Any, Union, Callable
+from typing import Optional, Any, Union, Callable, Hashable, Dict
+
+import attr
 
 BRANCH_SKIP_EXCEPT = "branch_skip_except"
 SKIP_EXCEPT_HACK = "brickflow_hack_skip_all"
@@ -53,31 +56,31 @@ class TaskComsObjectResult(Enum):
     NO_RESULTS = "NO_RESULTS"
 
 
+@dataclass
 class BrickflowTaskComsObject:
     # Use to encode any hashable value into bytes and then pickle.unloads
+    @dataclass(frozen=True)
     class _TaskComsObject:
-        def __init__(self, value: Any):
-            self._value = value
+        value: Hashable
 
-        @property
-        def return_value(self):
-            return self._value
+    _value: str = attr.field(on_setattr=attr.setters.frozen)
+    _task_coms_obj: _TaskComsObject = field(init=False)
 
-    def __init__(self, value):
-        self._task_results = self._TaskComsObject(value)
+    def __post_init__(self):
+        self._task_coms_obj = self._TaskComsObject(self._value)
 
     @property
-    def return_value(self):
-        return self._task_results.return_value
+    def value(self):
+        return self._task_coms_obj.value
 
     @property
     def to_encoded_value(self) -> str:
-        results_bytes = pickle.dumps(self._task_results)
+        results_bytes = pickle.dumps(self._task_coms_obj)
         return base64.b64encode(results_bytes).decode("utf-8")
 
     @classmethod
     def from_encoded_value(
-        cls, encoded_value: Union[str, bytes]
+        cls: "BrickflowTaskComsObject", encoded_value: Union[str, bytes]
     ) -> "BrickflowTaskComsObject":
         try:
             _encoded_value = (
@@ -86,25 +89,25 @@ class BrickflowTaskComsObject:
                 else encoded_value.encode("utf-8")
             )
             b64_bytes = base64.b64decode(_encoded_value)
-            return cls(pickle.loads(b64_bytes).return_value)
+            return cls(pickle.loads(b64_bytes).value)
         except binascii.Error:
             return cls(encoded_value)
 
 
+@dataclass
 class BrickflowTaskComsDict:
-    def __init__(self, task_id, task_coms: "BrickflowTaskComs"):
-        self._task_id = task_id
-        self._task_coms = task_coms
+    task_id: str
+    task_coms: "BrickflowTaskComs"
 
     def __getitem__(self, key):
         # fake behavior in airflow for: {{ ti.xcom_pull(task_ids='task_id')['arg'] }}
-        return self._task_coms.get(task_id=self._task_id, key=key)
+        return self.task_coms.get(task_id=self.task_id, key=key)
 
 
+@dataclass(frozen=True)
 class BrickflowTaskComs:
-    def __init__(self, dbutils=None):
-        self._storage = {}
-        self._dbutils = dbutils
+    dbutils: Optional[Any] = None
+    storage: Dict[str, Any] = field(init=False, default_factory=lambda: {})
 
     @staticmethod
     def _key(task_id, key):
@@ -112,43 +115,40 @@ class BrickflowTaskComs:
 
     def put(self, task_id, key, value: Any):
         encoded_value = BrickflowTaskComsObject(value).to_encoded_value
-        if self._dbutils is not None:
-            self._dbutils.jobs.taskValues.set(key, encoded_value)
+        if self.dbutils is not None:
+            self.dbutils.jobs.taskValues.set(key, encoded_value)
         else:
             # TODO: logging using local task coms
-            self._storage[self._key(task_id, key)] = encoded_value
+            self.storage[self._key(task_id, key)] = encoded_value
 
     def get(self, task_id, key=None):
         if key is None:
             return BrickflowTaskComsDict(task_id=task_id, task_coms=self)
-        if self._dbutils is not None:
-            encoded_value = self._dbutils.jobs.taskValues.get(
+        if self.dbutils is not None:
+            encoded_value = self.dbutils.jobs.taskValues.get(
                 key=key, taskKey=task_id, debugValue="debug"
             )
-            return BrickflowTaskComsObject.from_encoded_value(
-                encoded_value
-            ).return_value
+            return BrickflowTaskComsObject.from_encoded_value(encoded_value).value
         else:
             # TODO: logging using local task coms
-            encoded_value = self._storage[self._key(task_id, key)]
-            return BrickflowTaskComsObject.from_encoded_value(
-                encoded_value
-            ).return_value
+            encoded_value = self.storage[self._key(task_id, key)]
+            return BrickflowTaskComsObject.from_encoded_value(encoded_value).value
 
 
 class Context:
-    def __new__(cls):
-        if not hasattr(cls, "instance"):
-            cls.instance = super(Context, cls).__new__(cls)
-        return cls.instance
-
     def __init__(self):
         # Order of init matters todo: fix this
+
         self._dbutils: Optional[Any] = None
         self._spark: Optional[Any] = None
         self._task_coms = None
         self._current_task = None
         self._configure()
+
+    def __new__(cls):
+        if not hasattr(cls, "instance"):
+            cls.instance = super(Context, cls).__new__(cls)
+        return cls.instance  # noqa
 
     def _configure(self):
         # testing purposes only

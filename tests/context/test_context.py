@@ -38,14 +38,10 @@ class TestContext:
         b64_data = base64.b64encode(pickle.dumps(hidden_comms_obj)).decode("utf-8")
         comms_obj = BrickflowTaskComsObject(task_value)
         assert comms_obj.to_encoded_value == b64_data
-        assert comms_obj.return_value == task_value
+        assert comms_obj.value == task_value
+        assert BrickflowTaskComsObject.from_encoded_value(b64_data).value == task_value
         assert (
-            BrickflowTaskComsObject.from_encoded_value(b64_data).return_value
-            == task_value
-        )
-        assert (
-            BrickflowTaskComsObject.from_encoded_value(task_value).return_value
-            == task_value
+            BrickflowTaskComsObject.from_encoded_value(task_value).value == task_value
         )
 
     def test_brickflow_task_comms(self):

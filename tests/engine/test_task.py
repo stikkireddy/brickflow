@@ -91,7 +91,7 @@ class TestTask:
                 pass
 
     @patch("brickflow.context.ctx._task_coms")
-    def test_should_skip_false(self, task_coms_mock):
+    def test_should_skip_false(self, task_coms_mock: Mock):
         task_coms_mock.get.return_value = task_function_3.__name__
         skip, reason = wf.get_task(task_function_3.__name__).should_skip()
         assert skip is False
@@ -99,7 +99,7 @@ class TestTask:
         task_coms_mock.get.assert_called_once()
         ctx._configure()
 
-        task_coms_mock.get.return_value = task_function.__name__
+        task_coms_mock.get.value = task_function.__name__
         task_coms_mock.get.side_effect = Exception("error")
         skip, reason = wf.get_task(task_function_3.__name__).should_skip()
         assert skip is False
@@ -118,7 +118,7 @@ class TestTask:
 
     @patch("brickflow.context.ctx.dbutils_widget_get_or_else")
     def test_skip_not_selected_task(self, dbutils):
-        dbutils.return_value = "sometihngelse"
+        dbutils.value = "sometihngelse"
         skip, reason = wf.get_task(
             task_function_4.__name__
         )._skip_because_not_selected()
@@ -132,7 +132,7 @@ class TestTask:
         assert wf.get_task(task_function_4.__name__).execute() is None
 
     @patch("brickflow.context.ctx.dbutils_widget_get_or_else")
-    def test_no_skip_selected_task(self, dbutils):
+    def test_no_skip_selected_task(self, dbutils: Mock):
         dbutils.return_value = task_function_4.__name__
         skip, reason = wf.get_task(
             task_function_4.__name__
@@ -150,7 +150,7 @@ class TestTask:
         self, task_coms_mock: Mock, task_skip_selected_mock: Mock
     ):
         task_skip_selected_mock.return_value = (False, None)
-        task_coms_mock.get.return_value = task_function_2.__name__
+        task_coms_mock.get.value = task_function_2.__name__
         skip, reason = wf.get_task(task_function_3.__name__).should_skip()
         assert skip is True
         assert reason == "All tasks before this were not successful"

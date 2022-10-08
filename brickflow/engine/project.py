@@ -1,10 +1,12 @@
 import importlib
 import inspect
 import os
+from dataclasses import field, dataclass
 from enum import Enum
 from types import ModuleType
-from typing import Dict, Callable
+from typing import Dict, Callable, Optional
 
+import attr
 from decouple import config
 
 from brickflow.context import ctx, BrickflowInternalVariables
@@ -35,24 +37,14 @@ class BrickFlowEnvVars(Enum):
 
 
 # TODO: Logging
-
-
+@dataclass(frozen=True)
 class _Project:
-    # The goal of a project is to contain a bunch of workflows and convert this to a stack.
-    def __init__(
-        self,
-        git_repo: str = None,
-        provider: str = None,
-        git_reference: str = None,
-        s3_backend: str = None,
-        entry_point_path: str = None,
-    ):
-        self._entry_point_path = entry_point_path
-        self._s3_backend = s3_backend
-        self._git_reference = git_reference
-        self._provider = provider
-        self._git_repo = git_repo
-        self._workflows: Dict[str, Workflow] = {}
+    git_repo: Optional[str] = None
+    provider: Optional[str] = None
+    git_reference: Optional[str] = None
+    s3_backend: Optional[str] = None
+    entry_point_path: Optional[str] = None
+    workflows: Dict[str, Workflow] = field(default_factory=lambda: {})
 
     def add_pkg(self, pkg: ModuleType):
         for module in os.listdir(os.path.dirname(pkg.__file__)):
@@ -73,14 +65,14 @@ class _Project:
             raise WorkflowAlreadyExistsError(
                 f"Workflow with name: {workflow.name} already exists!"
             )
-        self._workflows[workflow.name] = workflow
+        self.workflows[workflow.name] = workflow
 
     def workflow_exists(self, workflow: Workflow):
-        return workflow.name in self._workflows
+        return workflow.name in self.workflows
 
     @wraps_keyerror(WorkflowNotFoundError, "Unable to find workflow: ")
     def get_workflow(self, workflow_id):
-        return self._workflows[workflow_id]
+        return self.workflows[workflow_id]
 
     def _create_workflow_tasks(self, workflow: Workflow):
         # Avoid node reqs
@@ -105,7 +97,7 @@ class _Project:
             tasks.append(
                 JobTask(
                     **{
-                        tf_task_type: task.get_tf_obj(self._entry_point_path),
+                        tf_task_type: task.get_tf_obj(self.entry_point_path),
                         **task_settings.to_tf_dict(),
                     },
                     depends_on=depends_on,
@@ -161,11 +153,11 @@ class _Project:
             host=config("DATABRICKS_HOST", default=None),
             token=config("DATABRICKS_TOKEN", default=None),
         )
-        for workflow_name, workflow in self._workflows.items():
-            ref_type = self._git_reference.split("/")[0]
-            ref_value = "/".join(self._git_reference.split("/")[1:])
+        for workflow_name, workflow in self.workflows.items():
+            ref_type = self.git_reference.split("/", maxsplit=1)[0]
+            ref_value = "/".join(self.git_reference.split("/")[1:])
             git_conf = JobGitSource(
-                url=self._git_repo, provider=self._provider, **{ref_type: ref_value}
+                url=self.git_repo, provider=self.provider, **{ref_type: ref_value}
             )
             # tasks = []
             tasks = self._create_workflow_tasks(workflow)
@@ -197,54 +189,51 @@ def get_caller_info():
 
 
 # TODO: See if project can just be a directory path and scan for all "Workflow" instances
+@dataclass
 class Project:
-    def __init__(
-        self,
-        name,
-        debug_execute_workflow: str = None,
-        debug_execute_task: str = None,
-        git_repo: str = None,
-        provider: str = None,
-        git_reference: str = None,
-        s3_backend: str = None,
-        entry_point_path: str = None,
-    ):
+    name: str = attr.field(on_setattr=attr.setters.frozen)
+    debug_execute_workflow: Optional[str] = None
+    debug_execute_task: Optional[str] = None
+    git_repo: Optional[str] = None
+    provider: Optional[str] = None
+    git_reference: Optional[str] = None
+    s3_backend: Optional[str] = None
+    entry_point_path: Optional[str] = None
+    mode: Optional[str] = None
+
+    _project: Optional[_Project] = field(init=False)
+
+    def __post_init__(self):
         self._mode = Stage[
             config(BrickFlowEnvVars.BRICKFLOW_MODE.value, default=Stage.execute.value)
         ]
+        self.entry_point_path = self.entry_point_path or get_caller_info()
 
-        self._entry_point_path = entry_point_path or get_caller_info()
-        self._s3_backend = s3_backend
-        # TODO: Support deploying to paused state via env variable
         if self._mode == Stage.deploy:
             git_ref_default = (
-                git_reference
-                if git_reference is not None
+                self.git_reference
+                if self.git_reference is not None
                 else f"commit/{get_current_commit()}"
             )
         else:
-            git_ref_default = git_reference
-        self._git_reference = config(
+            git_ref_default = self.git_reference
+        self.git_reference = config(
             BrickFlowEnvVars.BRICKFLOW_GIT_REF.value, default=git_ref_default
         )
-        self._provider = config(
-            BrickFlowEnvVars.BRICKFLOW_GIT_PROVIDER.value, default=provider
+        self.provider = config(
+            BrickFlowEnvVars.BRICKFLOW_GIT_PROVIDER.value, default=self.provider
         )
-        self._git_repo = config(
-            BrickFlowEnvVars.BRICKFLOW_GIT_REPO.value, default=git_repo
+        self.git_repo = config(
+            BrickFlowEnvVars.BRICKFLOW_GIT_REPO.value, default=self.git_repo
         )
-        self._debug_execute_task = debug_execute_task
-        self._debug_execute_workflow = debug_execute_workflow
-        self._name = name
-        self._project = None
 
     def __enter__(self):
         self._project = _Project(
-            self._git_repo,
-            self._provider,
-            self._git_reference,
-            self._s3_backend,
-            self._entry_point_path,
+            self.git_repo,
+            self.provider,
+            self.git_reference,
+            self.s3_backend,
+            self.entry_point_path,
         )
         return self._project
 
@@ -256,16 +245,16 @@ class Project:
             app = App()
             self._project.generate_tf(
                 app,
-                self._name,
+                self.name,
             )
             app.synth()
         if self._mode.value == Stage.execute.value:
             wf_id = ctx.dbutils_widget_get_or_else(
                 BrickflowInternalVariables.workflow_id.value,
-                self._debug_execute_workflow,
+                self.debug_execute_workflow,
             )
             t_id = ctx.dbutils_widget_get_or_else(
-                BrickflowInternalVariables.task_id.value, self._debug_execute_task
+                BrickflowInternalVariables.task_id.value, self.debug_execute_task
             )
             workflow = self._project.get_workflow(wf_id)
             task = workflow.get_task(t_id)

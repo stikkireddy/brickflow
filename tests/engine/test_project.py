@@ -15,8 +15,8 @@ from brickflow.engine.project import (
 from tests.engine.sample_workflow import wf, task_function
 
 
-def side_effect(a, _):
-
+def side_effect(a, b):
+    print(a, b)
     if a == BrickflowInternalVariables.workflow_id.value:
         return wf.name
     if a == BrickflowInternalVariables.task_id.value:
@@ -47,9 +47,9 @@ class TestProject:
             f.add_workflow(wf)
 
         # default path uses commit
-        assert f._git_reference == "commit/" + git_ref_b.decode("utf-8")
-        assert f._git_repo == git_repo
-        assert f._provider == git_provider
+        assert f.git_reference == "commit/" + git_ref_b.decode("utf-8")
+        assert f.git_repo == git_repo
+        assert f.provider == git_provider
 
         subproc.assert_has_calls(
             [  # noqa
