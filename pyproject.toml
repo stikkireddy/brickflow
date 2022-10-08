@@ -10,6 +10,21 @@ repository = "https://github.com/stikkireddy/brickflow"
 include = [
     "LICENSE",
 ]
+exclude = ["sample_workflows", "tests"]
+
+[tool.black]
+line-length = 88
+target-version = ['py38']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # The following are specific to Black, you probably don't want those.
+  | brickflow/tf
+  | venv
+  | brickflow.egg-info
+  | dist
+)/
+'''
 
 [tool.poetry.dependencies]
 python = "^3.8"
@@ -18,6 +33,9 @@ networkx = ">=2"
 
 cdktf = {version = ">=0.12.3",  optional = true }
 
+[tool.poetry.scripts]
+bf = "brickflow.cli:cli"
+brickflow = "brickflow.cli:cli"
 
 [tool.poetry.extras]
 deploy = ["cdktf"]
@@ -28,6 +46,7 @@ pytest-mock = "^3.10.0"
 coverage = "^6.5.0"
 black = "^22.8.0"
 prospector = "^1.7.7"
+cdktf = ">=0.12.3"
 
 [build-system]
 requires = ["poetry-core", "poetry-dynamic-versioning"]

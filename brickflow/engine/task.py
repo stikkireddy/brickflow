@@ -161,6 +161,7 @@ class Task:
         task_id,
         task_func: Callable,
         workflow: "Workflow",  # noqa
+        #  TODO: ADD DESCRIPTION FOR TASKS!
         compute: Optional["Compute"],
         depends_on: Optional[List[Union[Callable, str]]] = None,
         task_type: TaskType = TaskType.NOTEBOOK,

@@ -58,7 +58,7 @@ class TestTask:
         assert wf.get_task(task_function_nokwargs.__name__).custom_task_parameters == {}
 
     def test_task_settings(self):
-        assert wf.get_task(task_function.__name__).task_settings == None
+        assert wf.get_task(task_function.__name__).task_settings is None
 
     def test_parents(self):
         assert wf.get_task(task_function_2.__name__).parents == ["task_function"]
@@ -75,19 +75,19 @@ class TestTask:
         with pytest.raises(InvalidTaskSignatureDefinition):
             # missing * and kwargs
             @wf.task
-            def _fake_task(test):
+            def _fake_task(test):  # noqa
                 pass
 
         with pytest.raises(InvalidTaskSignatureDefinition):
             # missing *
             @wf.task
-            def _fake_task(test="test"):
+            def _fake_task(test="test"):  # noqa
                 pass
 
         with pytest.raises(InvalidTaskSignatureDefinition):
             # doesnt support bytes-like
             @wf.task
-            def _fake_task(*, test=b"test"):
+            def _fake_task(*, test=b"test"):  # noqa
                 pass
 
     @patch("brickflow.context.ctx._task_coms")
@@ -152,7 +152,7 @@ class TestTask:
         task_skip_selected_mock.return_value = (False, None)
         task_coms_mock.get.return_value = task_function_2.__name__
         skip, reason = wf.get_task(task_function_3.__name__).should_skip()
-        assert skip == True
+        assert skip is True
         assert reason == "All tasks before this were not successful"
         task_coms_mock.get.assert_called_once()
         assert wf.get_task(task_function_3.__name__).execute() is None

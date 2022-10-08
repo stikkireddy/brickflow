@@ -231,7 +231,7 @@ class Context:
             from pyspark.sql import SparkSession
 
             self._spark = SparkSession.getActiveSession()
-        except ImportError as ie:
+        except ImportError:
             # todo: log error
             pass
 

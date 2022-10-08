@@ -1,14 +1,8 @@
 black-check:
-	@poetry run black --check brickflow/engine
-	@poetry run black --check brickflow/context
-	@poetry run black --check brickflow/hints
-	@poetry run black --check tests
+	@poetry run black --check .
 
 fmt:
-	@poetry run black brickflow/engine
-	@poetry run black brickflow/context
-	@poetry run black brickflow/hints
-	@poetry run black tests
+	@poetry run black .
 
 dev:
 	@poetry install --all-extras
@@ -16,13 +10,13 @@ dev:
 check: black-check
 	@poetry run prospector --profile prospector.yaml
 
-cov:
-	@poetry run coverage run --source=brickflow --omit "brickflow/sample_dags/*,brickflow/tf/*" -m pytest && \
+cov: check
+	@poetry run coverage run --source=brickflow --omit "brickflow/sample_dags/*,sample_workflows/*,brickflow/tf/*" -m pytest && \
 	poetry run coverage report -m && \
 	poetry run coverage xml
 
-coverage:
-	@poetry run coverage run --source=brickflow --omit "brickflow/sample_dags/*,brickflow/tf/*" -m pytest && \
+coverage: check
+	@poetry run coverage run --source=brickflow --omit "brickflow/sample_dags/*,sample_workflows/*,brickflow/tf/*" -m pytest && \
 	poetry run coverage report -m && \
 	poetry run coverage html
 

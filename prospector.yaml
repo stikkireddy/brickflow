@@ -4,8 +4,8 @@ doc-warnings: false
 
 ignore-paths:
   - build
-  - tests
   - venv
+  - tests/engine/sample_workflow.py
   - brickflow/tf
   - brickflow/sample_dags
   - cdktf.out
@@ -13,6 +13,7 @@ ignore-paths:
   - main2.py
   - .eggs
   - htmlcov
+  - sample_workflows
 
 max-line-length: 120
 

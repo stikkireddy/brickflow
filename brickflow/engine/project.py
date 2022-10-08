@@ -1,6 +1,8 @@
+import importlib
 import inspect
 import os
 from enum import Enum
+from types import ModuleType
 from typing import Dict, Callable
 
 from decouple import config
@@ -51,6 +53,20 @@ class _Project:
         self._provider = provider
         self._git_repo = git_repo
         self._workflows: Dict[str, Workflow] = {}
+
+    def add_pkg(self, pkg: ModuleType):
+        for module in os.listdir(os.path.dirname(pkg.__file__)):
+            # only find python files and ignore __init__.py
+            if module == "__init__.py" or module[-3:] != ".py":
+                continue
+            module_name = module.replace(".py", "")
+            # import all the modules into the mod object and not actually import them using __import__
+            mod = importlib.import_module(f"{pkg.__name__}.{module_name}")
+            for obj in dir(mod):
+                module_item = getattr(mod, obj)
+                if isinstance(module_item, Workflow):
+                    # checked to see if this is a workflow object
+                    self.add_workflow(module_item)
 
     def add_workflow(self, workflow: Workflow):
         if self.workflow_exists(workflow) is True:
@@ -181,6 +197,7 @@ def get_caller_info():
             return os.path.splitext(os.path.relpath(i.filename, _cwd))[0]
 
 
+# TODO: See if project can just be a directory path and scan for all "Workflow" instances
 class Project:
     def __init__(
         self,
@@ -199,6 +216,7 @@ class Project:
 
         self._entry_point_path = entry_point_path or get_caller_info()
         self._s3_backend = s3_backend
+        # TODO: Support deploying to paused state via env variable
         if self._mode == Stage.deploy:
             git_ref_default = (
                 git_reference

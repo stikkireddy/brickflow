@@ -4,8 +4,6 @@ import pickle
 import sys
 from unittest.mock import Mock, patch
 
-import pytest
-
 from brickflow.context import (
     BrickflowTaskComsObject,
     BrickflowTaskComs,
@@ -150,4 +148,3 @@ class TestContext:
         sys.modules.pop("pyspark")
         sys.modules.pop("pyspark.sql")
         sys.modules.pop("pyspark.sql.SparkSession")
-

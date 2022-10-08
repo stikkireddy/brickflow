@@ -55,7 +55,7 @@ name = "cattrs"
 version = "22.1.0"
 description = "Composable complex class support for attrs and dataclasses."
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.7,<4.0"
 
 [package.dependencies]
@@ -67,7 +67,7 @@ name = "cdktf"
 version = "0.13.0"
 description = "Cloud Development Kit for Terraform"
 category = "main"
-optional = true
+optional = false
 python-versions = "~=3.7"
 
 [package.dependencies]
@@ -97,10 +97,10 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 
 [[package]]
 name = "constructs"
-version = "10.1.124"
+version = "10.1.125"
 description = "A programming model for software-defined state"
 category = "main"
-optional = true
+optional = false
 python-versions = "~=3.7"
 
 [package.dependencies]
@@ -143,7 +143,7 @@ name = "exceptiongroup"
 version = "1.0.0rc9"
 description = "Backport of PEP 654 (exception groups)"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.7"
 
 [package.extras]
@@ -200,7 +200,7 @@ name = "jsii"
 version = "1.69.0"
 description = "Python client for jsii runtime"
 category = "main"
-optional = true
+optional = false
 python-versions = "~=3.7"
 
 [package.dependencies]
@@ -350,7 +350,7 @@ name = "publication"
 version = "0.0.3"
 description = "Publication helps you maintain public-api-friendly modules by preventing unintentional access to private implementation details via introspection."
 category = "main"
-optional = true
+optional = false
 python-versions = "*"
 
 [[package]]
@@ -515,7 +515,7 @@ name = "python-dateutil"
 version = "2.8.2"
 description = "Extensions to the standard Python datetime module"
 category = "main"
-optional = true
+optional = false
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,>=2.7"
 
 [package.dependencies]
@@ -564,7 +564,7 @@ name = "six"
 version = "1.16.0"
 description = "Python 2 and 3 compatibility utilities"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*"
 
 [[package]]
@@ -604,7 +604,7 @@ name = "typeguard"
 version = "2.13.3"
 description = "Run-time type checker for Python"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.5.3"
 
 [package.extras]
@@ -633,7 +633,7 @@ deploy = ["cdktf"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "3cb21b3ba7b4e29f50e25f0b1de20b2fc919eb87251ab3515a9c5ed347dcb1fe"
+content-hash = "0066700b6be408325de1f145852ce1a2ecdf7ce4d88d4b4e83febb937d87d4da"
 
 [metadata.files]
 astroid = [
@@ -675,8 +675,8 @@ colorama = [
     {file = "colorama-0.4.5.tar.gz", hash = "sha256:e6c6b4334fc50988a639d9b98aa429a0b57da6e17b9a44f0451f930b6967b7a4"},
 ]
 constructs = [
-    {file = "constructs-10.1.124-py3-none-any.whl", hash = "sha256:76ef2e6776cfdd1c4131a18b0e83c1b154d462b3ebb37ddbeaf3043b3b0de301"},
-    {file = "constructs-10.1.124.tar.gz", hash = "sha256:5e4bfcca275867e5cfb4636ef65ed334c861a816f287ce1136f082ad0e0c1c2c"},
+    {file = "constructs-10.1.125-py3-none-any.whl", hash = "sha256:de4290eb5d3289b0c06b3f286b0f76db0dc00dda8d8b28e2249e0291920d7a56"},
+    {file = "constructs-10.1.125.tar.gz", hash = "sha256:6385f8a4af8d395514730363171d69f7005b0b736b7e5c0d5bf616abc7cd3f25"},
 ]
 coverage = [
     {file = "coverage-6.5.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:ef8674b0ee8cc11e2d574e3e2998aea5df5ab242e012286824ea3c6970580e53"},

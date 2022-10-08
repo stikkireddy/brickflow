@@ -15,8 +15,8 @@ from brickflow.engine.project import (
 from tests.engine.sample_workflow import wf, task_function
 
 
-def side_effect(a, b):
-    print(a, b)
+def side_effect(a, _):
+
     if a == BrickflowInternalVariables.workflow_id.value:
         return wf.name
     if a == BrickflowInternalVariables.task_id.value:
@@ -84,3 +84,11 @@ class TestProject:
             with Project("test-project") as f:
                 f.add_workflow(wf)
                 f.add_workflow(wf)
+
+    @patch("brickflow.context.ctx.dbutils_widget_get_or_else")
+    def test_adding_file(self, dbutils):
+        import sample_workflows
+
+        dbutils.side_effect = side_effect
+        with Project("test-project") as f:
+            f.add_pkg(sample_workflows)
