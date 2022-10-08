@@ -161,14 +161,15 @@ class Task:
         task_id,
         task_func: Callable,
         workflow: "Workflow",  # noqa
-        #  TODO: ADD DESCRIPTION FOR TASKS!
         compute: Optional["Compute"],
+        description: Optional[str] = None,
         depends_on: Optional[List[Union[Callable, str]]] = None,
         task_type: TaskType = TaskType.NOTEBOOK,
         trigger_rule: BrickflowTriggerRule = BrickflowTriggerRule.ALL_SUCCESS,
         task_settings: Optional[TaskSettings] = None,
         custom_execute_callback: Callable = None,
     ):
+        self._description = description
         self._custom_execute_callback = custom_execute_callback
         self._task_settings = task_settings
         self._trigger_rule = trigger_rule
@@ -184,6 +185,10 @@ class Task:
     @property
     def task_settings(self):
         return self._task_settings
+
+    @property
+    def description(self):
+        return self.description
 
     @property
     def parents(self):

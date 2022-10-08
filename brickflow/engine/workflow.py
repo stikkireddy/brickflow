@@ -210,6 +210,7 @@ class Workflow:
         self,
         f: Callable,
         task_id: str,
+        description: Optional[str] = None,
         compute: Optional[Compute] = None,
         task_type: Optional[TaskType] = TaskType.NOTEBOOK,
         depends_on: Optional[Union[Callable, str, List[Union[Callable, str]]]] = None,
@@ -227,13 +228,14 @@ class Workflow:
             else depends_on
         )
         self._tasks[task_id] = Task(
-            task_id,
-            f,
-            self,
-            compute or self._compute,
-            _depends_on,
-            task_type,
-            trigger_rule,
+            task_id=task_id,
+            task_func=f,
+            workflow=self,
+            description=description,
+            compute=compute or self._compute,
+            depends_on=_depends_on,
+            task_type=task_type,
+            trigger_rule=trigger_rule,
             custom_execute_callback=custom_execute_callback,
         )
 
