@@ -64,7 +64,7 @@ class TestTask:
         assert wf.get_task(task_function_2.__name__).parents == ["task_function"]
 
     def test_task_type(self):
-        assert wf.get_task(task_function_2.__name__).task_type == "notebook_task"
+        assert wf.get_task(task_function_2.__name__).task_type_str == "notebook_task"
 
     def test_depends_on(self):
         assert wf.get_task(task_function_3.__name__).depends_on == ["task_function_2"]

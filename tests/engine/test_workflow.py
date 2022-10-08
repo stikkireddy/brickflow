@@ -30,13 +30,13 @@ class TestWorkflow:
     def test_add_task(self):
         t = wf.get_task(task_function.__name__)
         assert t.name == task_function.__name__
-        assert t._task_func is not None
-        assert t._workflow == wf
-        assert t._compute == wf._compute
-        assert t._depends_on == []
-        assert t._task_type == TaskType.NOTEBOOK
-        assert t._trigger_rule == BrickflowTriggerRule.ALL_SUCCESS
-        assert t._custom_execute_callback is None
+        assert t.task_func is not None
+        assert t.workflow == wf
+        assert t.compute == wf._compute
+        assert t.depends_on == []
+        assert t.task_type == TaskType.NOTEBOOK
+        assert t.trigger_rule == BrickflowTriggerRule.ALL_SUCCESS
+        assert t.custom_execute_callback is None
 
     def test_add_existing_task_name(self):
         with pytest.raises(TaskAlreadyExistsError):
@@ -76,7 +76,7 @@ class TestWorkflow:
         arr = []
         for t in wf.task_iter():
             assert isinstance(t, Task)
-            assert callable(t._task_func)
+            assert callable(t.task_func)
             arr.append(t)
         assert len(arr) == 7, print([t.name for t in arr])
 

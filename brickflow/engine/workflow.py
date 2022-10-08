@@ -233,7 +233,7 @@ class Workflow:
             workflow=self,
             description=description,
             compute=compute or self._compute,
-            depends_on=_depends_on,
+            depends_on=_depends_on or [],
             task_type=task_type,
             trigger_rule=trigger_rule,
             custom_execute_callback=custom_execute_callback,

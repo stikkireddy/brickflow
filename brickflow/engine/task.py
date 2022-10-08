@@ -2,7 +2,7 @@ import functools
 import inspect
 import logging
 import numbers
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Callable, List, Dict, Union, Optional, Any, Tuple
 
@@ -88,64 +88,52 @@ class TaskType(Enum):
     CUSTOM_PYTHON_TASK = "custom_python_task"
 
 
+@dataclass(frozen=True)
 class EmailNotifications:
-    def __init__(
-        self,
-        on_failure: List[str] = None,
-        on_success: List[str] = None,
-        on_start: List[str] = None,
-    ):
-        self._on_start = on_start
-        self._on_success = on_success
-        self._on_failure = on_failure
+    on_failure: Optional[List[str]] = None
+    on_success: Optional[List[str]] = None
+    on_start: Optional[List[str]] = None
 
     def to_tf_dict(self):
         return {
-            "on_start": self._on_start,
-            "on_failure": self._on_failure,
-            "on_success": self._on_success,
+            "on_start": self.on_start,
+            "on_failure": self.on_failure,
+            "on_success": self.on_success,
         }
 
 
+@dataclass(frozen=True)
 class TaskSettings:
-    def __init__(
-        self,
-        email_notifications: EmailNotifications = None,
-        timeout_seconds: int = None,
-        max_retries: int = None,
-        min_retry_interval_millis: int = None,
-        retry_on_timeout: bool = None,
-    ):
-        self._retry_on_timeout = retry_on_timeout
-        self._min_retry_interval_millis = min_retry_interval_millis
-        self._max_retries = max_retries
-        self._timeout_seconds = timeout_seconds
-        self._email_notifications = email_notifications
+    email_notifications: EmailNotifications = None
+    timeout_seconds: int = None
+    max_retries: int = None
+    min_retry_interval_millis: int = None
+    retry_on_timeout: bool = None
 
-    def merge(self, other: "TaskSettings") -> "TaskSettings":
+    def merge(self, other: Optional["TaskSettings"]) -> "TaskSettings":
         # overrides top level values
         if other is None:
             return self
         return TaskSettings(
-            other._email_notifications or self._email_notifications,
-            other._timeout_seconds or self._timeout_seconds or 0,
-            other._max_retries or self._max_retries,
-            other._min_retry_interval_millis or self._min_retry_interval_millis,
-            other._retry_on_timeout or self._retry_on_timeout,
+            other.email_notifications or self.email_notifications,
+            other.timeout_seconds or self.timeout_seconds or 0,
+            other.max_retries or self.max_retries,
+            other.min_retry_interval_millis or self.min_retry_interval_millis,
+            other.retry_on_timeout or self.retry_on_timeout,
         )
 
     def to_tf_dict(self):
         email_not = (
-            self._email_notifications.to_tf_dict()
-            if self._email_notifications is not None
+            self.email_notifications.to_tf_dict()
+            if self.email_notifications is not None
             else {}
         )
         return {
             "email_notifications": email_not,
-            "timeout_seconds": self._timeout_seconds,
-            "max_retries": self._max_retries,
-            "min_retry_interval_millis": self._min_retry_interval_millis,
-            "retry_on_timeout": self._retry_on_timeout,
+            "timeout_seconds": self.timeout_seconds,
+            "max_retries": self.max_retries,
+            "min_retry_interval_millis": self.min_retry_interval_millis,
+            "retry_on_timeout": self.retry_on_timeout,
         }
 
 
@@ -155,52 +143,33 @@ class CustomTaskResponse:
     push_return_value: bool = True
 
 
+@dataclass(frozen=True)
 class Task:
-    def __init__(
-        self,
-        task_id,
-        task_func: Callable,
-        workflow: "Workflow",  # noqa
-        compute: Optional["Compute"],
-        description: Optional[str] = None,
-        depends_on: Optional[List[Union[Callable, str]]] = None,
-        task_type: TaskType = TaskType.NOTEBOOK,
-        trigger_rule: BrickflowTriggerRule = BrickflowTriggerRule.ALL_SUCCESS,
-        task_settings: Optional[TaskSettings] = None,
-        custom_execute_callback: Callable = None,
-    ):
-        self._description = description
-        self._custom_execute_callback = custom_execute_callback
-        self._task_settings = task_settings
-        self._trigger_rule = trigger_rule
-        self._task_type = task_type
-        self._compute = compute
-        self._depends_on = depends_on or []
-        self._workflow: "Workflow" = workflow  # noqa
-        self._task_func = task_func
-        self._task_id = task_id
+    task_id: str
+    task_func: Callable
+    workflow: "Workflow"  # noqa
+    compute: Optional["Compute"] = None
+    description: Optional[str] = None
+    depends_on: Optional[List[Union[Callable, str]]] = field(default_factory=lambda: [])
+    task_type: TaskType = TaskType.NOTEBOOK
+    trigger_rule: BrickflowTriggerRule = BrickflowTriggerRule.ALL_SUCCESS
+    task_settings: Optional[TaskSettings] = None
+    custom_execute_callback: Callable = None
 
+    def __post_init__(self):
         self.is_valid_task_signature()
 
     @property
-    def task_settings(self):
-        return self._task_settings
-
-    @property
-    def description(self):
-        return self.description
+    def task_func_name(self):
+        return self.task_func.__name__
 
     @property
     def parents(self):
-        return list(self._workflow.parents(self._task_id))
+        return list(self.workflow.parents(self.task_id))
 
     @property
-    def task_type(self) -> str:
-        return self._task_type.value
-
-    @property
-    def depends_on(self) -> Optional[List[Union[Callable, str]]]:
-        return self._depends_on
+    def task_type_str(self) -> str:
+        return self.task_type.value
 
     @property
     def builtin_notebook_params(self):
@@ -209,12 +178,12 @@ class Task:
 
     @property
     def name(self):
-        return self._task_id
+        return self.task_id
 
     @property
     def brickflow_default_params(self):
         return {
-            BrickflowInternalVariables.workflow_id.value: self._workflow.name,
+            BrickflowInternalVariables.workflow_id.value: self.workflow.name,
             # 2 braces to escape 1
             BrickflowInternalVariables.task_id.value: f"{{{{{BrickflowBuiltInTaskVariables.task_key.name}}}}}",
             BrickflowInternalVariables.only_run_tasks.value: "",
@@ -223,7 +192,7 @@ class Task:
     def get_tf_obj(self, entrypoint):
         from brickflow.tf.databricks import JobTaskNotebookTask
 
-        if self._task_type in [TaskType.NOTEBOOK, TaskType.CUSTOM_PYTHON_TASK]:
+        if self.task_type in [TaskType.NOTEBOOK, TaskType.CUSTOM_PYTHON_TASK]:
             return JobTaskNotebookTask(
                 notebook_path=entrypoint,
                 base_parameters={
@@ -236,17 +205,17 @@ class Task:
     # TODO: error if star isn't there
     def is_valid_task_signature(self):
         # only supports kwonlyargs with defaults
-        spec: inspect.FullArgSpec = inspect.getfullargspec(self._task_func)
-        sig: inspect.Signature = inspect.signature(self._task_func)
+        spec: inspect.FullArgSpec = inspect.getfullargspec(self.task_func)
+        sig: inspect.Signature = inspect.signature(self.task_func)
         signature_error_msg = (
             "Task signatures only supports kwargs with defaults. or catch all varkw **kwargs"
             "For example def execute(*, variable_a=None, variable_b=None, **kwargs). "
-            f"Please fix function def {self._task_func.__name__}{sig}: ..."
+            f"Please fix function def {self.task_func_name}{sig}: ..."
         )
         kwargs_default_error_msg = (
             f"Keyword arguments must be either None, String or number. "
             f"Please handle booleans via strings. "
-            f"Please fix function def {self._task_func.__name__}{sig}: ..."
+            f"Please fix function def {self.task_func_name}{sig}: ..."
         )
 
         valid_case = spec.args == [] and spec.varargs is None and spec.defaults is None
@@ -260,7 +229,7 @@ class Task:
 
     @property
     def custom_task_parameters(self) -> Dict[str, Union[str, None, numbers.Number]]:
-        spec: inspect.FullArgSpec = inspect.getfullargspec(self._task_func)
+        spec: inspect.FullArgSpec = inspect.getfullargspec(self.task_func)
         if spec.kwonlydefaults is None:
             return {}
         return {k: str(v) for k, v in spec.kwonlydefaults.items()}
@@ -290,11 +259,11 @@ class Task:
                     node_skip_checks.append(False)
         if not node_skip_checks:
             return False, None
-        if self._trigger_rule == BrickflowTriggerRule.ALL_SUCCESS:
+        if self.trigger_rule == BrickflowTriggerRule.ALL_SUCCESS:
             return self._get_skip_with_reason(
                 any(node_skip_checks), "All tasks before this were not successful"
             )
-        if self._trigger_rule == BrickflowTriggerRule.NONE_FAILED:
+        if self.trigger_rule == BrickflowTriggerRule.NONE_FAILED:
             return self._get_skip_with_reason(
                 all(node_skip_checks),
                 "At least one task before this were not successful",
@@ -340,13 +309,13 @@ class Task:
             ctx.reset_current_task()
             return
         return_value = TaskComsObjectResult.NO_RESULTS
-        if self._task_type == TaskType.CUSTOM_PYTHON_TASK:
-            resp: CustomTaskResponse = self._custom_execute_callback(self)
+        if self.task_type == TaskType.CUSTOM_PYTHON_TASK:
+            resp: CustomTaskResponse = self.custom_execute_callback(self)
             if resp.push_return_value is True:
                 return_value = resp.response
         else:
             # TODO: Inject context object
-            return_value = self._task_func()
+            return_value = self.task_func()
         ctx.task_coms.put(self.name, RETURN_VALUE_KEY, return_value)
         ctx.reset_current_task()
         return return_value

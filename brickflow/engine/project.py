@@ -96,8 +96,8 @@ class _Project:
                 for f in task.depends_on
             ]
             tf_task_type = (
-                task.task_type
-                if task.task_type != TaskType.CUSTOM_PYTHON_TASK.value
+                task.task_type_str
+                if task.task_type_str != TaskType.CUSTOM_PYTHON_TASK.value
                 else TaskType.NOTEBOOK.value
             )
 
