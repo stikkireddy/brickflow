@@ -36,10 +36,10 @@ class BrickflowInternalVariables(Enum):
     only_run_tasks = "brickflow_internal_only_run_tasks"
 
 
-def bind_variable(builtin: BrickflowBuiltInTaskVariables):
-    def wrapper(f):
+def bind_variable(builtin: BrickflowBuiltInTaskVariables) -> Callable:
+    def wrapper(f: Callable) -> Callable:
         @functools.wraps(f)
-        def func(*args, **kwargs):
+        def func(*args, **kwargs):  # type: ignore
             _self: Context = args[0]
             debug = kwargs["debug"]
             f(*args, **kwargs)  # no-op
@@ -63,14 +63,14 @@ class BrickflowTaskComsObject:
     class _TaskComsObject:
         value: Hashable
 
-    _value: str = attr.field(on_setattr=attr.setters.frozen)
+    _value: Any = attr.field(on_setattr=attr.setters.frozen)
     _task_coms_obj: _TaskComsObject = field(init=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self._task_coms_obj = self._TaskComsObject(self._value)
 
     @property
-    def value(self):
+    def value(self) -> Any:
         return self._task_coms_obj.value
 
     @property
@@ -80,7 +80,7 @@ class BrickflowTaskComsObject:
 
     @classmethod
     def from_encoded_value(
-        cls: "BrickflowTaskComsObject", encoded_value: Union[str, bytes]
+        cls, encoded_value: Union[str, bytes]
     ) -> "BrickflowTaskComsObject":
         try:
             _encoded_value = (
@@ -91,7 +91,12 @@ class BrickflowTaskComsObject:
             b64_bytes = base64.b64decode(_encoded_value)
             return cls(pickle.loads(b64_bytes).value)
         except binascii.Error:
-            return cls(encoded_value)
+            _decoded_value = (
+                encoded_value.decode("utf-8")
+                if isinstance(encoded_value, bytes)
+                else encoded_value
+            )
+            return cls(_decoded_value)
 
 
 @dataclass
@@ -99,7 +104,7 @@ class BrickflowTaskComsDict:
     task_id: str
     task_coms: "BrickflowTaskComs"
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> Any:
         # fake behavior in airflow for: {{ ti.xcom_pull(task_ids='task_id')['arg'] }}
         return self.task_coms.get(task_id=self.task_id, key=key)
 
@@ -110,10 +115,10 @@ class BrickflowTaskComs:
     storage: Dict[str, Any] = field(init=False, default_factory=lambda: {})
 
     @staticmethod
-    def _key(task_id, key):
+    def _key(task_id: str, key: str) -> str:
         return f"{task_id}::{key}"
 
-    def put(self, task_id, key, value: Any):
+    def put(self, task_id: str, key: str, value: Any) -> None:
         encoded_value = BrickflowTaskComsObject(value).to_encoded_value
         if self.dbutils is not None:
             self.dbutils.jobs.taskValues.set(key, encoded_value)
@@ -121,7 +126,7 @@ class BrickflowTaskComs:
             # TODO: logging using local task coms
             self.storage[self._key(task_id, key)] = encoded_value
 
-    def get(self, task_id, key=None):
+    def get(self, task_id: str, key: str = None) -> Any:
         if key is None:
             return BrickflowTaskComsDict(task_id=task_id, task_coms=self)
         if self.dbutils is not None:
@@ -136,47 +141,53 @@ class BrickflowTaskComs:
 
 
 class Context:
-    def __init__(self):
+    def __init__(self) -> None:
         # Order of init matters todo: fix this
 
         self._dbutils: Optional[Any] = None
         self._spark: Optional[Any] = None
-        self._task_coms = None
-        self._current_task = None
+        self._task_coms: BrickflowTaskComs
+        self._current_task: Optional[str] = None
         self._configure()
 
-    def __new__(cls):
+    def __new__(cls) -> "Context":
         if not hasattr(cls, "instance"):
             cls.instance = super(Context, cls).__new__(cls)
         return cls.instance  # noqa
 
-    def _configure(self):
+    def _configure(self) -> None:
         # testing purposes only
         self._set_spark_session()
         self._configure_dbutils()
         self._task_coms = BrickflowTaskComs(self._dbutils)
 
     @property
-    def current_task(self):
+    def current_task(self) -> Optional[str]:
         return self._current_task
 
-    def set_current_task(self, task_key):
+    def set_current_task(self, task_key: str) -> None:
         self._current_task = task_key
 
-    def reset_current_task(self):
+    def reset_current_task(self) -> None:
         self._current_task = None
 
-    def get_return_value(self, task_key: Union[str, Callable]):
+    def get_return_value(self, task_key: Union[str, Callable]) -> Any:
         task_key = task_key.__name__ if callable(task_key) else task_key
         return self.task_coms.get(task_key, RETURN_VALUE_KEY)
 
-    def skip_all_except(self, branch_task: Union[Callable, str]):
+    def skip_all_except(self, branch_task: Union[Callable, str]) -> None:
+        if self._current_task is None:
+            raise RuntimeError("Current task is empty unable to skip...")
         branch_task_key = (
-            branch_task.__name__ if callable(branch_task) is True else branch_task
+            branch_task.__name__
+            if callable(branch_task) and hasattr(branch_task, "__name__") is True
+            else branch_task
         )
         self._task_coms.put(self._current_task, BRANCH_SKIP_EXCEPT, branch_task_key)
 
-    def skip_all_following(self):
+    def skip_all_following(self) -> None:
+        if self._current_task is None:
+            raise RuntimeError("Current task is empty unable to skip...")
         self._task_coms.put(self._current_task, BRANCH_SKIP_EXCEPT, SKIP_EXCEPT_HACK)
 
     @property
@@ -184,49 +195,51 @@ class Context:
         return self._task_coms
 
     @bind_variable(BrickflowBuiltInTaskVariables.task_key)
-    def task_key(self, *, debug):
+    def task_key(self, *, debug: Optional[str]) -> str:
         pass
 
     @bind_variable(BrickflowBuiltInTaskVariables.task_retry_count)
-    def task_retry_count(self, *, debug):
+    def task_retry_count(self, *, debug: Optional[str]) -> str:
         pass
 
     @bind_variable(BrickflowBuiltInTaskVariables.run_id)
-    def run_id(self, *, debug):
+    def run_id(self, *, debug: Optional[str]) -> str:
         pass
 
     @bind_variable(BrickflowBuiltInTaskVariables.job_id)
-    def job_id(self, *, debug):
+    def job_id(self, *, debug: Optional[str]) -> str:
         pass
 
     @bind_variable(BrickflowBuiltInTaskVariables.parent_run_id)
-    def parent_run_id(self, *, debug):
+    def parent_run_id(self, *, debug: Optional[str]) -> str:
         pass
 
     @bind_variable(BrickflowBuiltInTaskVariables.start_date)
-    def start_date(self, *, debug):
+    def start_date(self, *, debug: Optional[str]) -> str:
         pass
 
     @bind_variable(BrickflowBuiltInTaskVariables.start_time)
-    def start_time(self, *, debug):
+    def start_time(self, *, debug: Optional[str]) -> str:
         pass
 
     @property
-    def dbutils(self):
+    def dbutils(self) -> "DBUtils":  # type: ignore # noqa
         return self._dbutils
 
     @property
-    def spark(self):
+    def spark(self) -> "SparkSession":  # type: ignore # noqa
         return self._spark
 
-    def dbutils_widget_get_or_else(self, key, debug):
+    def dbutils_widget_get_or_else(
+        self, key: str, debug: Optional[str]
+    ) -> Optional[str]:
         try:
             return self.dbutils.widgets.get(key)
         except Exception:
             # todo: log error
             return debug
 
-    def _set_spark_session(self):
+    def _set_spark_session(self) -> None:
         try:
             from pyspark.sql import SparkSession
 
@@ -235,7 +248,7 @@ class Context:
             # todo: log error
             pass
 
-    def _configure_dbutils(self):
+    def _configure_dbutils(self) -> ContextMode:
         try:
             from pyspark.dbutils import DBUtils
 

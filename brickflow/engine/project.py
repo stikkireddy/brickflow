@@ -4,7 +4,7 @@ import os
 from dataclasses import field, dataclass
 from enum import Enum
 from types import ModuleType
-from typing import Dict, Callable, Optional
+from typing import Dict, Optional, List
 
 import attr
 from decouple import config
@@ -46,8 +46,11 @@ class _Project:
     entry_point_path: Optional[str] = None
     workflows: Dict[str, Workflow] = field(default_factory=lambda: {})
 
-    def add_pkg(self, pkg: ModuleType):
-        for module in os.listdir(os.path.dirname(pkg.__file__)):
+    def add_pkg(self, pkg: ModuleType) -> None:
+        file_name = pkg.__file__
+        if file_name is None:
+            raise ImportError(f"Invalid pkg error: {str(pkg)}")
+        for module in os.listdir(os.path.dirname(file_name)):
             # only find python files and ignore __init__.py
             if module == "__init__.py" or module[-3:] != ".py":
                 continue
@@ -60,21 +63,21 @@ class _Project:
                     # checked to see if this is a workflow object
                     self.add_workflow(module_item)
 
-    def add_workflow(self, workflow: Workflow):
+    def add_workflow(self, workflow: Workflow) -> None:
         if self.workflow_exists(workflow) is True:
             raise WorkflowAlreadyExistsError(
                 f"Workflow with name: {workflow.name} already exists!"
             )
         self.workflows[workflow.name] = workflow
 
-    def workflow_exists(self, workflow: Workflow):
+    def workflow_exists(self, workflow: Workflow) -> bool:
         return workflow.name in self.workflows
 
     @wraps_keyerror(WorkflowNotFoundError, "Unable to find workflow: ")
-    def get_workflow(self, workflow_id):
+    def get_workflow(self, workflow_id: str) -> Optional[Workflow]:
         return self.workflows[workflow_id]
 
-    def _create_workflow_tasks(self, workflow: Workflow):
+    def _create_workflow_tasks(self, workflow: Workflow) -> List["JobTask"]:  # type: ignore  # noqa
         # Avoid node reqs
         from brickflow.tf.databricks import (
             JobTask,
@@ -83,10 +86,7 @@ class _Project:
 
         tasks = []
         for task_name, task in workflow.tasks.items():
-            depends_on = [
-                JobTaskDependsOn(task_key=f.__name__ if isinstance(f, Callable) else f)
-                for f in task.depends_on
-            ]
+            depends_on = [JobTaskDependsOn(task_key=task_name) for f in task.depends_on]
             tf_task_type = (
                 task.task_type_str
                 if task.task_type_str != TaskType.CUSTOM_PYTHON_TASK.value
@@ -105,11 +105,11 @@ class _Project:
                     existing_cluster_id=workflow.existing_cluster_id,
                 )
             )
-        tasks.sort(key=lambda t: t.task_key)
+        tasks.sort(key=lambda t: (t.task_key is None, t.task_key))
         return tasks
 
-    def _create_workflow_permissions(
-        self, stack, workflow: Workflow, job_obj: "Job"  # noqa
+    def _create_workflow_permissions(  # type: ignore
+        self, stack: "TerraformStack", workflow: Workflow, job_obj: "Job"  # type: ignore   # noqa
     ):
         # Avoid node reqs
         from brickflow.tf.databricks import (
@@ -127,7 +127,7 @@ class _Project:
             ],
         )
 
-    def generate_tf(self, app, id_):
+    def generate_tf(self, app, id_) -> None:  # type: ignore
         if (
             is_git_dirty()
             and config(BrickFlowEnvVars.BRICKFLOW_FORCE_DEPLOY.value, default="false")
@@ -154,10 +154,11 @@ class _Project:
             token=config("DATABRICKS_TOKEN", default=None),
         )
         for workflow_name, workflow in self.workflows.items():
-            ref_type = self.git_reference.split("/", maxsplit=1)[0]
-            ref_value = "/".join(self.git_reference.split("/")[1:])
+            git_ref = self.git_reference or ""
+            ref_type = git_ref.split("/", maxsplit=1)[0]
+            ref_value = "/".join(git_ref.split("/")[1:])
             git_conf = JobGitSource(
-                url=self.git_repo, provider=self.provider, **{ref_type: ref_value}
+                url=self.git_repo or "", provider=self.provider, **{ref_type: ref_value}
             )
             # tasks = []
             tasks = self._create_workflow_tasks(workflow)
@@ -179,13 +180,14 @@ class Stage(Enum):
     execute = "execute"
 
 
-def get_caller_info():
+def get_caller_info() -> Optional[str]:
     # First get the full filename which isnt project.py (the first area where this caller info is called.
     # This should work most of the time.
     _cwd = str(os.getcwd())
     for i in inspect.stack():
         if i.filename not in [__file__, ""]:
             return os.path.splitext(os.path.relpath(i.filename, _cwd))[0]
+    return None
 
 
 # TODO: See if project can just be a directory path and scan for all "Workflow" instances
@@ -201,9 +203,9 @@ class Project:
     entry_point_path: Optional[str] = None
     mode: Optional[str] = None
 
-    _project: Optional[_Project] = field(init=False)
+    _project: _Project = field(init=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self._mode = Stage[
             config(BrickFlowEnvVars.BRICKFLOW_MODE.value, default=Stage.execute.value)
         ]
@@ -216,7 +218,9 @@ class Project:
                 else f"commit/{get_current_commit()}"
             )
         else:
-            git_ref_default = self.git_reference
+            git_ref_default = (
+                self.git_reference if self.git_reference is not None else ""
+            )
         self.git_reference = config(
             BrickFlowEnvVars.BRICKFLOW_GIT_REF.value, default=git_ref_default
         )
@@ -227,7 +231,7 @@ class Project:
             BrickFlowEnvVars.BRICKFLOW_GIT_REPO.value, default=self.git_repo
         )
 
-    def __enter__(self):
+    def __enter__(self) -> "_Project":
         self._project = _Project(
             self.git_repo,
             self.provider,
@@ -237,7 +241,9 @@ class Project:
         )
         return self._project
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:  # type: ignore
+        if exc_type is not None:
+            raise exc_type
         if self._mode.value == Stage.deploy.value:
             # local import to avoid node req
             from cdktf import App

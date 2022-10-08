@@ -1,11 +1,11 @@
-import functools
+from __future__ import annotations
+
 import inspect
 import logging
 import numbers
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Callable, List, Dict, Union, Optional, Any, Tuple
-
+from typing import Callable, List, Dict, Union, Optional, Any, Tuple, TYPE_CHECKING
 from decouple import config
 
 from brickflow.context import (
@@ -17,36 +17,11 @@ from brickflow.context import (
     TaskComsObjectResult,
     RETURN_VALUE_KEY,
 )
-from brickflow.engine import ROOT_NODE
+from brickflow.engine import ROOT_NODE, with_brickflow_logger
 from brickflow.engine.compute import Compute
 
-
-def with_brickflow_logger(f):
-    @functools.wraps(f)
-    def func(*args, **kwargs):
-        _self = args[0]
-        logger = logging.getLogger()  # Logger
-        logger.setLevel(logging.INFO)
-        back_up_logging_handlers = logger.handlers
-        logger.handlers = []
-        logger_handler = logging.StreamHandler()  # Handler for the logger
-        logger.addHandler(logger_handler)
-
-        # First, generic formatter:
-        logger_handler.setFormatter(
-            logging.Formatter(
-                f"[%(asctime)s] [%(levelname)s] [brickflow:{_self.name}] {{%(module)s.py:%(lineno)d}} - %(message)s"
-            )
-        )
-        resp = f(*args, **kwargs)
-
-        logger.handlers = []
-        for handler in back_up_logging_handlers:
-            logger.addHandler(handler)
-
-        return resp
-
-    return func
+if TYPE_CHECKING:
+    from brickflow.engine.workflow import Workflow  # pragma: no cover
 
 
 class TaskNotFoundError(Exception):
@@ -94,7 +69,7 @@ class EmailNotifications:
     on_success: Optional[List[str]] = None
     on_start: Optional[List[str]] = None
 
-    def to_tf_dict(self):
+    def to_tf_dict(self) -> Dict[str, Optional[List[str]]]:
         return {
             "on_start": self.on_start,
             "on_failure": self.on_failure,
@@ -104,11 +79,11 @@ class EmailNotifications:
 
 @dataclass(frozen=True)
 class TaskSettings:
-    email_notifications: EmailNotifications = None
-    timeout_seconds: int = None
-    max_retries: int = None
-    min_retry_interval_millis: int = None
-    retry_on_timeout: bool = None
+    email_notifications: Optional[EmailNotifications] = None
+    timeout_seconds: Optional[int] = None
+    max_retries: Optional[int] = None
+    min_retry_interval_millis: Optional[int] = None
+    retry_on_timeout: Optional[bool] = None
 
     def merge(self, other: Optional["TaskSettings"]) -> "TaskSettings":
         # overrides top level values
@@ -122,7 +97,15 @@ class TaskSettings:
             other.retry_on_timeout or self.retry_on_timeout,
         )
 
-    def to_tf_dict(self):
+    def to_tf_dict(
+        self,
+    ) -> Dict[
+        str,
+        Optional[str]
+        | Optional[int]
+        | Optional[bool]
+        | Optional[Dict[str, Optional[List[str]]]],
+    ]:
         email_not = (
             self.email_notifications.to_tf_dict()
             if self.email_notifications is not None
@@ -147,24 +130,24 @@ class CustomTaskResponse:
 class Task:
     task_id: str
     task_func: Callable
-    workflow: "Workflow"  # noqa
-    compute: Optional["Compute"] = None
+    workflow: Workflow  # noqa
+    compute: Optional[Compute] = None
     description: Optional[str] = None
-    depends_on: Optional[List[Union[Callable, str]]] = field(default_factory=lambda: [])
+    depends_on: List[Union[Callable, str]] = field(default_factory=lambda: [])
     task_type: TaskType = TaskType.NOTEBOOK
     trigger_rule: BrickflowTriggerRule = BrickflowTriggerRule.ALL_SUCCESS
     task_settings: Optional[TaskSettings] = None
-    custom_execute_callback: Callable = None
+    custom_execute_callback: Optional[Callable] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self.is_valid_task_signature()
 
     @property
-    def task_func_name(self):
+    def task_func_name(self) -> str:
         return self.task_func.__name__
 
     @property
-    def parents(self):
+    def parents(self) -> List[str]:
         return list(self.workflow.parents(self.task_id))
 
     @property
@@ -172,16 +155,16 @@ class Task:
         return self.task_type.value
 
     @property
-    def builtin_notebook_params(self):
+    def builtin_notebook_params(self) -> Dict[str, str]:
         # 2 braces to escape for 1
         return {i.value: f"{{{{{i.name}}}}}" for i in BrickflowBuiltInTaskVariables}
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.task_id
 
     @property
-    def brickflow_default_params(self):
+    def brickflow_default_params(self) -> Dict[str, str]:
         return {
             BrickflowInternalVariables.workflow_id.value: self.workflow.name,
             # 2 braces to escape 1
@@ -189,7 +172,7 @@ class Task:
             BrickflowInternalVariables.only_run_tasks.value: "",
         }
 
-    def get_tf_obj(self, entrypoint):
+    def get_tf_obj(self, entrypoint) -> "JobTaskNotebookTask":  # type: ignore  # noqa
         from brickflow.tf.databricks import JobTaskNotebookTask
 
         if self.task_type in [TaskType.NOTEBOOK, TaskType.CUSTOM_PYTHON_TASK]:
@@ -198,12 +181,12 @@ class Task:
                 base_parameters={
                     **self.builtin_notebook_params,
                     **self.brickflow_default_params,
-                    **(self.custom_task_parameters or {}),
+                    **(self.custom_task_parameters or {}),  # type: ignore
                 },
             )
 
     # TODO: error if star isn't there
-    def is_valid_task_signature(self):
+    def is_valid_task_signature(self) -> None:
         # only supports kwonlyargs with defaults
         spec: inspect.FullArgSpec = inspect.getfullargspec(self.task_func)
         sig: inspect.Signature = inspect.signature(self.task_func)
@@ -235,7 +218,7 @@ class Task:
         return {k: str(v) for k, v in spec.kwonlydefaults.items()}
 
     @staticmethod
-    def _get_skip_with_reason(cond, reason):
+    def _get_skip_with_reason(cond: bool, reason: str) -> Tuple[bool, Optional[str]]:
         if cond is True:
             return cond, reason
         return cond, None
@@ -259,15 +242,16 @@ class Task:
                     node_skip_checks.append(False)
         if not node_skip_checks:
             return False, None
-        if self.trigger_rule == BrickflowTriggerRule.ALL_SUCCESS:
-            return self._get_skip_with_reason(
-                any(node_skip_checks), "All tasks before this were not successful"
-            )
         if self.trigger_rule == BrickflowTriggerRule.NONE_FAILED:
+            # by default a task failure automatically skips
             return self._get_skip_with_reason(
                 all(node_skip_checks),
                 "At least one task before this were not successful",
             )
+        # default is BrickflowTriggerRule.ALL_SUCCESS
+        return self._get_skip_with_reason(
+            any(node_skip_checks), "All tasks before this were not successful"
+        )
 
     def _skip_because_not_selected(self) -> Tuple[bool, Optional[str]]:
         selected_tasks = ctx.dbutils_widget_get_or_else(
@@ -285,7 +269,7 @@ class Task:
         return False, None
 
     @with_brickflow_logger
-    def execute(self):
+    def execute(self) -> Any:
         # Workflow is:
         #   1. Check to see if there selected tasks and if there are is this task in the list
         #   2. Check to see if the previous task is skipped and trigger rule.
@@ -309,7 +293,10 @@ class Task:
             ctx.reset_current_task()
             return
         return_value = TaskComsObjectResult.NO_RESULTS
-        if self.task_type == TaskType.CUSTOM_PYTHON_TASK:
+        if (
+            self.task_type == TaskType.CUSTOM_PYTHON_TASK
+            and self.custom_execute_callback is not None
+        ):
             resp: CustomTaskResponse = self.custom_execute_callback(self)
             if resp.push_return_value is True:
                 return_value = resp.response

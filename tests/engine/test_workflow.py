@@ -32,7 +32,8 @@ class TestWorkflow:
         assert t.name == task_function.__name__
         assert t.task_func is not None
         assert t.workflow == wf
-        assert t.compute == wf.compute
+        # task compute is workflow default compute
+        assert t.compute == wf.default_compute
         assert t.depends_on == []
         assert t.task_type == TaskType.NOTEBOOK
         assert t.trigger_rule == BrickflowTriggerRule.ALL_SUCCESS

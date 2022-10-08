@@ -1,8 +1,13 @@
+from __future__ import annotations
+
+import functools
+import logging
 import subprocess
+from typing import Callable
 
 
-def _call(cmd, **kwargs):
-    return subprocess.check_output(
+def _call(cmd: str, **kwargs: bool) -> bytes:
+    return subprocess.check_output(  # type: ignore
         [
             cmd,
         ],
@@ -10,21 +15,49 @@ def _call(cmd, **kwargs):
     )
 
 
-def is_git_dirty():
-    p = _call("git diff --stat", shell=True)
+def is_git_dirty() -> bool:
+    p = _call("git diff --stat", shell=True).decode("utf-8")
     if len(p) > 10:
         return True
     return False
 
 
-def get_current_branch():
+def get_current_branch() -> str:
     p = _call("git rev-parse --abbrev-ref HEAD", shell=True)
     return p.strip().decode("utf-8")
 
 
-def get_current_commit():
+def get_current_commit() -> str:
     p = _call('git log -n 1 --pretty=format:"%H"', shell=True)
     return p.strip().decode("utf-8")
+
+
+def with_brickflow_logger(f: Callable) -> Callable:
+    @functools.wraps(f)
+    def func(*args, **kwargs):  # type: ignore
+        _self = args[0]
+        logger = logging.getLogger()  # Logger
+        logger.setLevel(logging.INFO)
+        back_up_logging_handlers = logger.handlers
+        logger.handlers = []
+        logger_handler = logging.StreamHandler()  # Handler for the logger
+        logger.addHandler(logger_handler)
+
+        # First, generic formatter:
+        logger_handler.setFormatter(
+            logging.Formatter(
+                f"[%(asctime)s] [%(levelname)s] [brickflow:{_self.name}] {{%(module)s.py:%(lineno)d}} - %(message)s"
+            )
+        )
+        resp = f(*args, **kwargs)
+
+        logger.handlers = []
+        for handler in back_up_logging_handlers:
+            logger.addHandler(handler)
+
+        return resp
+
+    return func
 
 
 ROOT_NODE = "root"

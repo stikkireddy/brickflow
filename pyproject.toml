@@ -47,6 +47,7 @@ coverage = "^6.5.0"
 black = "^22.8.0"
 prospector = "^1.7.7"
 cdktf = ">=0.12.3"
+mypy = "^0.982"
 
 [build-system]
 requires = ["poetry-core", "poetry-dynamic-versioning"]
@@ -74,3 +75,12 @@ style = "semver"
     [tool.coverage.report]
     skip_empty = true
 
+[tool.mypy]
+disallow_untyped_defs = true
+ignore_missing_imports = true
+files = [
+    "brickflow/context/*.py",
+    "brickflow/cli/*.py",
+    "brickflow/hints/*.py",
+    "brickflow/engine/*.py",
+]

@@ -4,6 +4,8 @@ import pickle
 import sys
 from unittest.mock import Mock, patch
 
+import pytest
+
 from brickflow.context import (
     BrickflowTaskComsObject,
     BrickflowTaskComs,
@@ -102,19 +104,32 @@ class TestContext:
 
     @patch("brickflow.context.ctx._task_coms")
     def test_context_obj_task_coms(self, task_coms: Mock):
+        current_task = "curr_task"
         task_key = "some_task"
         some_return_value = "some_value"
         task_coms.get.return_value = some_return_value
         assert ctx.get_return_value(task_key) == some_return_value
         task_coms.get.assert_called_once_with(task_key, RETURN_VALUE_KEY)
-
+        # set the current task
+        ctx.set_current_task(current_task)
         ctx.skip_all_except(task_key)
-        task_coms.put.assert_called_with(None, BRANCH_SKIP_EXCEPT, task_key)
+        task_coms.put.assert_called_with(current_task, BRANCH_SKIP_EXCEPT, task_key)
         ctx.skip_all_except(fake_task)
-        task_coms.put.assert_called_with(None, BRANCH_SKIP_EXCEPT, fake_task.__name__)
-
+        task_coms.put.assert_called_with(
+            current_task, BRANCH_SKIP_EXCEPT, fake_task.__name__
+        )
         ctx.skip_all_following()
-        task_coms.put.assert_called_with(None, BRANCH_SKIP_EXCEPT, SKIP_EXCEPT_HACK)
+        task_coms.put.assert_called_with(
+            current_task, BRANCH_SKIP_EXCEPT, SKIP_EXCEPT_HACK
+        )
+        ctx.reset_current_task()
+
+    def test_context_skip_runtime_error(self):
+        with pytest.raises(RuntimeError):
+            ctx.skip_all_except("sometask")
+
+        with pytest.raises(RuntimeError):
+            ctx.skip_all_following()
 
     def test_dbutils_widget_get_or_else(self):
         key = "random-key"

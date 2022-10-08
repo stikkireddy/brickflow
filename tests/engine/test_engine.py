@@ -13,7 +13,7 @@ class TestEngine:
 
     def test_is_git_dirty_true(self, mocker):
         mocker.patch("subprocess.check_output")
-        subprocess.check_output.return_value = "superlongstringtofakedirtyrepo"
+        subprocess.check_output.return_value = b"superlongstringtofakedirtyrepo"
         assert is_git_dirty() is True
         subprocess.check_output.assert_called_once_with(  # noqa
             ["git diff --stat"], shell=True

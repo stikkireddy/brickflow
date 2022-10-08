@@ -26,33 +26,33 @@ class ScimEntity(abc.ABC):
     name: str
 
     @abc.abstractmethod
-    def to_access_control(self):  # pragma: no cover
+    def to_access_control(self) -> Dict[str, str]:  # pragma: no cover
         pass
 
 
 class User(ScimEntity):
-    def to_access_control(self):
+    def to_access_control(self) -> Dict[str, str]:
         return {"user_name": self.name}
 
 
 class Group(ScimEntity):
-    def to_access_control(self):
+    def to_access_control(self) -> Dict[str, str]:
         return {"group_name": self.name}
 
 
 class ServicePrincipal(ScimEntity):
-    def to_access_control(self):
+    def to_access_control(self) -> Dict[str, str]:
         return {"service_principal_name": self.name}
 
 
 @dataclass(frozen=True)
 class WorkflowPermissions:
-    owner: Optional[User] = (None,)
-    can_manage_run: Optional[List[ScimEntity]] = (None,)
-    can_view: Optional[List[ScimEntity]] = (None,)
-    can_manage: Optional[List[ScimEntity]] = (None,)
+    owner: Optional[User] = None
+    can_manage_run: List[ScimEntity] = field(default_factory=lambda: [])
+    can_view: List[ScimEntity] = field(default_factory=lambda: [])
+    can_manage: List[ScimEntity] = field(default_factory=lambda: [])
 
-    def to_access_controls(self):
+    def to_access_controls(self) -> List:
         access_controls = []
         # TODO: Permissions as ENUM
         if self.owner is not None:
@@ -80,7 +80,7 @@ class Workflow:
     default_compute: Compute = Compute(compute_id="default")
     compute: Dict[str, Compute] = field(default_factory=lambda: {})
     existing_cluster_id: Optional[str] = None
-    default_task_settings: Optional[TaskSettings] = TaskSettings()
+    default_task_settings: TaskSettings = TaskSettings()
     tags: Optional[Dict[str, str]] = None
     max_concurrent_runs: int = 1
     permissions: WorkflowPermissions = WorkflowPermissions()
@@ -88,16 +88,16 @@ class Workflow:
     graph: nx.DiGraph = nx.DiGraph()
     tasks: Dict[str, Task] = field(default_factory=lambda: {})
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self.graph.add_node(ROOT_NODE)
-        self.default_task_settings = self.default_task_settings or TaskSettings()
+        # self.default_task_settings = self.default_task_settings or TaskSettings()
 
         self.default_compute.set_to_default()
         self.compute = {"default": self.default_compute}
         # self.compute = (compute and {c.compute_id: c for c in compute}) or {"default": self.default_compute}
 
     @property
-    def bfs_layers(self):
+    def bfs_layers(self) -> List[str]:
         return list(nx.bfs_layers(self.graph, ROOT_NODE))[1:]
 
     def task_iter(self) -> Iterator[Task]:
@@ -109,10 +109,10 @@ class Workflow:
             for task_key in layer:
                 yield self.get_task(task_key)
 
-    def parents(self, node):
+    def parents(self, node: str) -> Iterator:
         return self.graph.predecessors(node)
 
-    def check_no_active_task(self):
+    def check_no_active_task(self) -> None:
         if self.active_task is not None:
             raise AnotherActiveTaskError(
                 "You are calling another active task in another task. "
@@ -120,30 +120,33 @@ class Workflow:
             )
 
     @wraps_keyerror(TaskNotFoundError, "Unable to find task: ")
-    def get_task(self, task_id) -> Task:
+    def get_task(self, task_id: str) -> Task:
         return self.tasks[task_id]
 
     @wraps_keyerror(TaskNotFoundError, "Unable to find task: ")
-    def pop_task(self, task_id):
+    def pop_task(self, task_id: str) -> None:
         # Pop from dict and graph
         self.tasks.pop(task_id)
         self.graph.remove_node(task_id)
 
-    def task_exists(self, task_id):
+    def task_exists(self, task_id: str) -> bool:
         return task_id in self.tasks
 
-    def _set_active_task(self, task_id):
+    def _set_active_task(self, task_id: str) -> None:
         self.active_task = task_id
 
-    def _reset_active_task(self):
+    def _reset_active_task(self) -> None:
         self.active_task = None
 
     # TODO: is this even needed?
     # def get_return_value(self, f: Callable, default=None):
     #     return default
 
-    @functools.singledispatch
-    def _add_edge_to_graph(self, depends_on, task_id):
+    def _add_edge_to_graph(
+        self,
+        depends_on: Union[List[Union[Callable, str]], Union[Callable, str]],
+        task_id: str,
+    ) -> None:
         depends_on_list = depends_on if isinstance(depends_on, list) else [depends_on]
         for t in depends_on_list:
             if isinstance(t, str):
@@ -157,11 +160,11 @@ class Workflow:
         task_id: str,
         description: Optional[str] = None,
         compute: Optional[Compute] = None,
-        task_type: Optional[TaskType] = TaskType.NOTEBOOK,
+        task_type: TaskType = TaskType.NOTEBOOK,
         depends_on: Optional[Union[Callable, str, List[Union[Callable, str]]]] = None,
         trigger_rule: BrickflowTriggerRule = BrickflowTriggerRule.ALL_SUCCESS,
         custom_execute_callback: Callable = None,
-    ):
+    ) -> None:
         if self.task_exists(task_id):
             raise TaskAlreadyExistsError(
                 f"Task: {task_id} already exists, please rename your function."
@@ -177,7 +180,7 @@ class Workflow:
             task_func=f,
             workflow=self,
             description=description,
-            compute=compute or self.compute,
+            compute=compute or self.default_compute,
             depends_on=_depends_on or [],
             task_type=task_type,
             trigger_rule=trigger_rule,
@@ -195,12 +198,12 @@ class Workflow:
         task_func: Callable = None,
         name: str = None,
         compute: Optional[Compute] = None,
-        task_type: Optional[TaskType] = TaskType.NOTEBOOK,
+        task_type: TaskType = TaskType.NOTEBOOK,
         depends_on: Optional[Union[Callable, str, List[Union[Callable, str]]]] = None,
         trigger_rule: BrickflowTriggerRule = BrickflowTriggerRule.ALL_SUCCESS,
         custom_execute_callback: Callable = None,
-    ):
-        def task_wrapper(f: Callable):
+    ) -> Callable:
+        def task_wrapper(f: Callable) -> Callable:
             task_id = name or f.__name__
 
             self._add_task(
@@ -214,7 +217,7 @@ class Workflow:
             )
 
             @functools.wraps(f)
-            def func(*args, **kwargs):
+            def func(*args, **kwargs):  # type: ignore
                 try:
                     self.check_no_active_task()
                     self._set_active_task(task_id)

@@ -11,6 +11,7 @@ from brickflow.engine.project import (
     Stage,
     GitRepoIsDirtyError,
     WorkflowAlreadyExistsError,
+    get_caller_info,
 )
 from tests.engine.sample_workflow import wf, task_function
 
@@ -86,9 +87,22 @@ class TestProject:
                 f.add_workflow(wf)
 
     @patch("brickflow.context.ctx.dbutils_widget_get_or_else")
-    def test_adding_file(self, dbutils):
+    def test_adding_pkg(self, dbutils):
         import sample_workflows
 
         dbutils.side_effect = side_effect
         with Project("test-project") as f:
             f.add_pkg(sample_workflows)
+
+    def test_adding_pkg_err(self):
+        fake_pkg = Mock()
+        setattr(fake_pkg, "__file__", None)
+        with pytest.raises(ImportError):
+            with Project("test-project") as f:
+                f.add_pkg(fake_pkg)
+
+    @patch("inspect.stack")
+    def test_get_caller_info(self, inspect_mock: Mock):
+        inspect_mock.return_value = []
+        assert get_caller_info() is None
+        inspect_mock.assert_called_once()
