@@ -6,7 +6,17 @@ import logging
 import numbers
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Callable, List, Dict, Union, Optional, Any, Tuple, TYPE_CHECKING
+from typing import (
+    Callable,
+    List,
+    Dict,
+    Union,
+    Optional,
+    Any,
+    Tuple,
+    TYPE_CHECKING,
+    Iterator,
+)
 
 from decouple import config
 
@@ -273,6 +283,14 @@ class Task:
     @property
     def parents(self) -> List[str]:
         return list(self.workflow.parents(self.task_id))
+
+    @property
+    def depends_on_names(self) -> Iterator[str]:
+        for i in self.depends_on:
+            if callable(i) and hasattr(i, "__name__"):
+                yield i.__name__
+            else:
+                yield str(i)
 
     @property
     def task_type_str(self) -> str:

@@ -1,0 +1,18 @@
+# Databricks notebook source
+
+import {{ pkg }}
+
+from brickflow.engine.project import Project
+from brickflow.engine.task import PypiTaskLibrary
+
+if __name__ == "__main__":
+
+    with Project(
+        "{{ project_name }}",
+        git_repo="{{ git_https_url }}",
+        provider="{{ git_provider }}",
+        libraries=[PypiTaskLibrary(
+            package="git+https://github.com/stikkireddy/brickflow.git"
+        )]
+    ) as f:
+        f.add_pkg({{ pkg }})

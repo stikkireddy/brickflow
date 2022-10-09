@@ -9,6 +9,8 @@ homepage = "https://github.com/stikkireddy/brickflow"
 repository = "https://github.com/stikkireddy/brickflow"
 include = [
     "LICENSE",
+    "entrypoint.template",
+    "gitignore_template.txt",
 ]
 exclude = ["sample_workflows", "tests"]
 
@@ -32,6 +34,8 @@ python-decouple = ">=3.6"
 networkx = ">=2"
 
 cdktf = {version = ">=0.12.3",  optional = true }
+pendulum = "^2.1.2"
+Jinja2 = "^3.1.2"
 
 [tool.poetry.scripts]
 bf = "brickflow.cli:cli"

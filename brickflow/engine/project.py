@@ -6,9 +6,9 @@ from enum import Enum
 from types import ModuleType
 from typing import Dict, Optional, List
 
-import attr
 from decouple import config
 
+from brickflow import log
 from brickflow.context import ctx, BrickflowInternalVariables
 from brickflow.engine import is_git_dirty, get_current_commit
 from brickflow.engine.task import TaskType, TaskLibrary
@@ -78,6 +78,7 @@ class _Project:
     def get_workflow(self, workflow_id: str) -> Optional[Workflow]:
         return self.workflows[workflow_id]
 
+    # TODO: test terraform objects
     def _create_workflow_tasks(self, workflow: Workflow) -> List["JobTask"]:  # type: ignore  # noqa
         # Avoid node reqs
         from brickflow.tf.databricks import (
@@ -87,7 +88,7 @@ class _Project:
 
         tasks = []
         for task_name, task in workflow.tasks.items():
-            depends_on = [JobTaskDependsOn(task_key=task_name) for f in task.depends_on]
+            depends_on = [JobTaskDependsOn(task_key=f) for f in task.depends_on_names]
             tf_task_type = (
                 task.task_type_str
                 if task.task_type_str != TaskType.CUSTOM_PYTHON_TASK.value
@@ -155,15 +156,12 @@ class _Project:
             JobGitSource,
         )
 
-        stack = TerraformStack(app, id_)
-        DatabricksProvider(
-            stack,
-            "Databricks",
-            profile=config("DATABRICKS_PROFILE", default=None),
-            host=config("DATABRICKS_HOST", default=None),
-            token=config("DATABRICKS_TOKEN", default=None),
-        )
         for workflow_name, workflow in self.workflows.items():
+            stack = TerraformStack(app, f"{id_}_{workflow_name}")
+            DatabricksProvider(
+                stack,
+                "Databricks",
+            )
             git_ref = self.git_reference or ""
             ref_type = git_ref.split("/", maxsplit=1)[0]
             ref_value = "/".join(git_ref.split("/")[1:])
@@ -196,7 +194,7 @@ def get_caller_info() -> Optional[str]:
     # This should work most of the time.
     _cwd = str(os.getcwd())
     for i in inspect.stack():
-        if i.filename not in [__file__, ""]:
+        if i.filename not in [__file__, ""] and os.path.exists(i.filename):
             return os.path.splitext(os.path.relpath(i.filename, _cwd))[0]
     return None
 
@@ -204,7 +202,7 @@ def get_caller_info() -> Optional[str]:
 # TODO: See if project can just be a directory path and scan for all "Workflow" instances
 @dataclass
 class Project:
-    name: str = attr.field(on_setattr=attr.setters.frozen)
+    name: str
     debug_execute_workflow: Optional[str] = None
     debug_execute_task: Optional[str] = None
     git_repo: Optional[str] = None
@@ -257,6 +255,11 @@ class Project:
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:  # type: ignore
         if exc_type is not None:
             raise exc_type
+
+        if len(self._project.workflows) == 0:
+            log.info("Doing nothing no workflows...")
+            return
+
         if self._mode.value == Stage.deploy.value:
             # local import to avoid node req
             from cdktf import App
@@ -275,6 +278,13 @@ class Project:
             t_id = ctx.dbutils_widget_get_or_else(
                 BrickflowInternalVariables.task_id.value, self.debug_execute_task
             )
+
+            if wf_id is None or t_id is None:
+                log.info(
+                    "No workflow id or task key was able to found; doing nothing..."
+                )
+                return
+
             workflow = self._project.get_workflow(wf_id)
             task = workflow.get_task(t_id)
             task.execute()

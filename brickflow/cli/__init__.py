@@ -1,10 +1,23 @@
 import os
+import os.path
 import subprocess
 import webbrowser
 from typing import Optional, Tuple
 
 import click
 from click import ClickException
+
+from brickflow.cli.configure import (
+    _check_git_dir,
+    _gitignore_exists,
+    GitIgnoreNotFoundError,
+    _update_gitignore,
+    _validate_package,
+    GitNotFoundError,
+    render_template,
+    create_entry_point,
+)
+from brickflow.engine import get_git_remote_url_https
 
 
 def cdktf_command(base_command: Optional[str] = None) -> click.Command:
@@ -48,9 +61,38 @@ def cli() -> None:
 
 
 @cli.command
-def init() -> None:
+@click.option("-n", "--project-name", type=str, prompt=True)
+@click.option(
+    "-p", "--git-provider", type=click.Choice(["github", "gitlab"]), prompt=True
+)
+@click.option(
+    "-w", "--workflows-dir", type=click.Path(exists=True, file_okay=False), prompt=True
+)
+def init(project_name: str, git_provider: str, workflows_dir: str) -> None:
     """Initialize your project with Brickflows..."""
-    click.echo("hello world")
+    try:
+        _check_git_dir()
+        if _gitignore_exists() is False:
+            raise GitIgnoreNotFoundError
+        git_https_url: str = get_git_remote_url_https() or ""
+        _update_gitignore()
+        create_entry_point(
+            workflows_dir,
+            render_template(
+                project_name=project_name,
+                git_provider=git_provider,
+                git_https_url=git_https_url,
+                pkg=_validate_package(workflows_dir),
+            ),
+        )
+    except GitNotFoundError:
+        raise ClickException(
+            "Please make sure you are in the root directory of your project with git initialized."
+        )
+    except GitIgnoreNotFoundError:
+        raise ClickException(
+            "Please make sure you create a .gitignore file in the root directory."
+        )
 
 
 @cli.command

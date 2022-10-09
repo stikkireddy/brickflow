@@ -16,8 +16,7 @@ from brickflow.engine.project import (
 from tests.engine.sample_workflow import wf, task_function
 
 
-def side_effect(a, b):
-    print(a, b)
+def side_effect(a, b):  # noqa
     if a == BrickflowInternalVariables.workflow_id.value:
         return wf.name
     if a == BrickflowInternalVariables.task_id.value:
@@ -85,6 +84,19 @@ class TestProject:
             with Project("test-project") as f:
                 f.add_workflow(wf)
                 f.add_workflow(wf)
+
+    def test_project_workflow_no_workflows_skip(self):
+        with Project("test-project"):
+            pass
+
+    @patch("brickflow.context.ctx.dbutils_widget_get_or_else")
+    def test_project_workflow_no_workflow_task_id_skip(self, dbutils):
+        dbutils.return_value = None
+
+        with Project(
+            "test-project",
+        ) as f:
+            f.add_workflow(wf)
 
     @patch("brickflow.context.ctx.dbutils_widget_get_or_else")
     def test_adding_pkg(self, dbutils):

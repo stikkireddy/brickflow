@@ -3,7 +3,7 @@ from __future__ import annotations
 import functools
 import logging
 import subprocess
-from typing import Callable
+from typing import Callable, Optional
 
 
 def _call(cmd: str, **kwargs: bool) -> bytes:
@@ -13,6 +13,24 @@ def _call(cmd: str, **kwargs: bool) -> bytes:
         ],
         **kwargs,
     )
+
+
+def get_git_remote_url_https() -> Optional[str]:
+    git_url = get_git_remote_url()
+    if git_url.startswith("https://"):
+        return git_url.replace(".git", "")
+    if git_url.startswith("git@github.com"):
+        return (
+            git_url.replace("git@", "https://")
+            .replace(".com:", ".com/")
+            .replace(".git", "")
+        )
+    return None
+
+
+def get_git_remote_url() -> str:
+    p = _call("git config --get remote.origin.url", shell=True).decode("utf-8")
+    return p.strip()
 
 
 def is_git_dirty() -> bool:

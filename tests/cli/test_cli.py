@@ -1,5 +1,6 @@
 import os
 import subprocess
+from pathlib import Path
 from unittest.mock import patch, Mock
 
 import click
@@ -22,11 +23,55 @@ def fake_run_with_error(*_, **__):
 
 
 class TestCli:
-    def test_init(self):
+    @patch("subprocess.check_output")
+    @patch("os.path")
+    def test_init(self, path_mock: Mock, subproc_mock: Mock, tmp_path):
+        test_dir = Path(tmp_path) / "test"
+        test_dir.mkdir(exist_ok=True, parents=True)
+        os.chdir(str(test_dir))
+        test_git_ignore = test_dir / ".gitignore"
+        with test_git_ignore.open("w") as f:
+            f.write("")
+        assert test_dir.exists() is True and test_dir.is_dir()
+        subproc_mock.return_value = b"https://github.com/someorg/somerepo"
+        path_mock.exists.return_value = True
+        path_mock.isdir.return_value = True
         runner = CliRunner()
-        result = runner.invoke(cli, ["init"])  # noqa
-        assert result.exit_code == 0
-        assert result.output.strip() == "hello world"
+        result = runner.invoke(
+            cli, ["init", "-n", "test-proj", "-p", "github", "-w", str(test_dir)]
+        )  # noqa
+        assert result.exit_code == 0, result.output
+
+    def test_init_no_git_error(self, tmp_path):
+        test_dir = Path(tmp_path) / "test"
+        test_dir.mkdir(exist_ok=True, parents=True)
+        runner = CliRunner()
+        result = runner.invoke(
+            cli, ["init", "-n", "test-proj", "-p", "github", "-w", str(test_dir)]
+        )  # noqa
+        assert result.exit_code == 1
+        assert result.output.strip().startswith(
+            "Error: Please make sure you are in the root "
+            "directory of your project with git initialized."
+        )
+
+    @patch("os.path")
+    def test_init_no_gitignore_error(self, path_mock: Mock, tmp_path):
+        test_dir = Path(tmp_path) / "test"
+        test_dir.mkdir(exist_ok=True, parents=True)
+        os.chdir(str(test_dir))
+        path_mock.exists.return_value = True
+        path_mock.isdir.return_value = True
+        path_mock.isfile.return_value = False
+        runner = CliRunner()
+        result = runner.invoke(
+            cli, ["init", "-n", "test-proj", "-p", "github", "-w", str(test_dir)]
+        )  # noqa
+        assert result.exit_code == 1
+        assert result.output.strip().startswith(
+            "Error: Please make sure you create "
+            "a .gitignore file in the root directory."
+        )
 
     @patch("os.environ.copy", wraps=os.environ.copy)
     @patch("subprocess.run")
