@@ -1056,6 +1056,20 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#brickflow.cli.deploy" class="md-nav__link">
+    deploy()
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#brickflow.cli.diff" class="md-nav__link">
+    diff()
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#brickflow.cli.docs" class="md-nav__link">
     docs()
   </a>
@@ -1307,6 +1321,20 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#brickflow.cli.deploy" class="md-nav__link">
+    deploy()
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#brickflow.cli.diff" class="md-nav__link">
+    diff()
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#brickflow.cli.docs" class="md-nav__link">
     docs()
   </a>
@@ -1408,21 +1436,25 @@
 
       <details class="quote">
         <summary>Source code in <code>brickflow/cli/__init__.py</code></summary>
-        <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-29">29</a></span>
-<span class="normal"><a href="#__codelineno-0-30">30</a></span>
-<span class="normal"><a href="#__codelineno-0-31">31</a></span>
-<span class="normal"><a href="#__codelineno-0-32">32</a></span>
-<span class="normal"><a href="#__codelineno-0-33">33</a></span>
+        <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-33">33</a></span>
 <span class="normal"><a href="#__codelineno-0-34">34</a></span>
 <span class="normal"><a href="#__codelineno-0-35">35</a></span>
-<span class="normal"><a href="#__codelineno-0-36">36</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-29" name="__codelineno-0-29"></a><span class="k">def</span> <span class="nf">get_command</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">click</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span> <span class="n">cmd_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">click</span><span class="o">.</span><span class="n">Command</span><span class="p">]:</span>
-<a id="__codelineno-0-30" name="__codelineno-0-30"></a>    <span class="k">if</span> <span class="n">cmd_name</span> <span class="o">==</span> <span class="s2">&quot;cdktf&quot;</span><span class="p">:</span>
-<a id="__codelineno-0-31" name="__codelineno-0-31"></a>        <span class="k">return</span> <span class="n">cdktf_command</span><span class="p">()</span>
-<a id="__codelineno-0-32" name="__codelineno-0-32"></a>    <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-33" name="__codelineno-0-33"></a>        <span class="n">rv</span> <span class="o">=</span> <span class="n">click</span><span class="o">.</span><span class="n">Group</span><span class="o">.</span><span class="n">get_command</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">,</span> <span class="n">cmd_name</span><span class="p">)</span>
-<a id="__codelineno-0-34" name="__codelineno-0-34"></a>        <span class="k">if</span> <span class="n">rv</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-35" name="__codelineno-0-35"></a>            <span class="k">return</span> <span class="n">rv</span>
-<a id="__codelineno-0-36" name="__codelineno-0-36"></a>        <span class="n">ctx</span><span class="o">.</span><span class="n">fail</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No such command &#39;</span><span class="si">{</span><span class="n">cmd_name</span><span class="si">}</span><span class="s2">&#39;.&quot;</span><span class="p">)</span>
+<span class="normal"><a href="#__codelineno-0-36">36</a></span>
+<span class="normal"><a href="#__codelineno-0-37">37</a></span>
+<span class="normal"><a href="#__codelineno-0-38">38</a></span>
+<span class="normal"><a href="#__codelineno-0-39">39</a></span>
+<span class="normal"><a href="#__codelineno-0-40">40</a></span>
+<span class="normal"><a href="#__codelineno-0-41">41</a></span>
+<span class="normal"><a href="#__codelineno-0-42">42</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-33" name="__codelineno-0-33"></a><span class="k">def</span> <span class="nf">get_command</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">click</span><span class="o">.</span><span class="n">Context</span><span class="p">,</span> <span class="n">cmd_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">click</span><span class="o">.</span><span class="n">Command</span><span class="p">]:</span>
+<a id="__codelineno-0-34" name="__codelineno-0-34"></a>    <span class="k">if</span> <span class="n">cmd_name</span> <span class="o">==</span> <span class="s2">&quot;cdktf&quot;</span><span class="p">:</span>
+<a id="__codelineno-0-35" name="__codelineno-0-35"></a>        <span class="k">return</span> <span class="n">cdktf_command</span><span class="p">()</span>
+<a id="__codelineno-0-36" name="__codelineno-0-36"></a>    <span class="k">elif</span> <span class="n">cmd_name</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;deploy&quot;</span><span class="p">,</span> <span class="s2">&quot;diff&quot;</span><span class="p">]:</span>
+<a id="__codelineno-0-37" name="__codelineno-0-37"></a>        <span class="k">return</span> <span class="n">cdktf_command</span><span class="p">(</span><span class="n">cmd_name</span><span class="p">)</span>
+<a id="__codelineno-0-38" name="__codelineno-0-38"></a>    <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-0-39" name="__codelineno-0-39"></a>        <span class="n">rv</span> <span class="o">=</span> <span class="n">click</span><span class="o">.</span><span class="n">Group</span><span class="o">.</span><span class="n">get_command</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">,</span> <span class="n">cmd_name</span><span class="p">)</span>
+<a id="__codelineno-0-40" name="__codelineno-0-40"></a>        <span class="k">if</span> <span class="n">rv</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-41" name="__codelineno-0-41"></a>            <span class="k">return</span> <span class="n">rv</span>
+<a id="__codelineno-0-42" name="__codelineno-0-42"></a>        <span class="k">raise</span> <span class="n">ctx</span><span class="o">.</span><span class="n">fail</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No such command &#39;</span><span class="si">{</span><span class="n">cmd_name</span><span class="si">}</span><span class="s2">&#39;.&quot;</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
       </details>
   </div>
@@ -1454,17 +1486,17 @@
 
       <details class="quote">
         <summary>Source code in <code>brickflow/cli/__init__.py</code></summary>
-        <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-57">57</a></span>
-<span class="normal"><a href="#__codelineno-0-58">58</a></span>
-<span class="normal"><a href="#__codelineno-0-59">59</a></span>
-<span class="normal"><a href="#__codelineno-0-60">60</a></span>
-<span class="normal"><a href="#__codelineno-0-61">61</a></span>
-<span class="normal"><a href="#__codelineno-0-62">62</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-57" name="__codelineno-0-57"></a><span class="nd">@cli</span><span class="o">.</span><span class="n">command</span>
-<a id="__codelineno-0-58" name="__codelineno-0-58"></a><span class="k">def</span> <span class="nf">cdktf</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-59" name="__codelineno-0-59"></a>    <span class="sd">&quot;&quot;&quot;CLI for deploying workflow projects.&quot;&quot;&quot;</span>
-<a id="__codelineno-0-60" name="__codelineno-0-60"></a>    <span class="c1"># Hack for having cdktf show up as a command in brickflow</span>
-<a id="__codelineno-0-61" name="__codelineno-0-61"></a>    <span class="c1"># with documentation.</span>
-<a id="__codelineno-0-62" name="__codelineno-0-62"></a>    <span class="k">pass</span>  <span class="c1"># pragma: no cover</span>
+        <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-63">63</a></span>
+<span class="normal"><a href="#__codelineno-0-64">64</a></span>
+<span class="normal"><a href="#__codelineno-0-65">65</a></span>
+<span class="normal"><a href="#__codelineno-0-66">66</a></span>
+<span class="normal"><a href="#__codelineno-0-67">67</a></span>
+<span class="normal"><a href="#__codelineno-0-68">68</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-63" name="__codelineno-0-63"></a><span class="nd">@cli</span><span class="o">.</span><span class="n">command</span>
+<a id="__codelineno-0-64" name="__codelineno-0-64"></a><span class="k">def</span> <span class="nf">cdktf</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-65" name="__codelineno-0-65"></a>    <span class="sd">&quot;&quot;&quot;CLI for deploying workflow projects.&quot;&quot;&quot;</span>
+<a id="__codelineno-0-66" name="__codelineno-0-66"></a>    <span class="c1"># Hack for having cdktf show up as a command in brickflow</span>
+<a id="__codelineno-0-67" name="__codelineno-0-67"></a>    <span class="c1"># with documentation.</span>
+<a id="__codelineno-0-68" name="__codelineno-0-68"></a>    <span class="k">pass</span>  <span class="c1"># pragma: no cover</span>
 </code></pre></div></td></tr></table></div>
       </details>
   </div>
@@ -1476,7 +1508,7 @@
 
 
 <h3 id="brickflow.cli.cdktf_command" class="doc doc-heading">
-<code class="highlight language-python"><span class="n">brickflow</span><span class="o">.</span><span class="n">cli</span><span class="o">.</span><span class="n">cdktf_command</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">click</span><span class="o">.</span><span class="n">Command</span></code>
+<code class="highlight language-python"><span class="n">brickflow</span><span class="o">.</span><span class="n">cli</span><span class="o">.</span><span class="n">cdktf_command</span><span class="p">(</span><span class="n">base_command</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">click</span><span class="o">.</span><span class="n">Command</span></code>
 
 <a href="#brickflow.cli.cdktf_command" class="headerlink" title="Permanent link">&para;</a></h3>
 
@@ -1500,7 +1532,11 @@
 <span class="normal"><a href="#__codelineno-0-22">22</a></span>
 <span class="normal"><a href="#__codelineno-0-23">23</a></span>
 <span class="normal"><a href="#__codelineno-0-24">24</a></span>
-<span class="normal"><a href="#__codelineno-0-25">25</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-10" name="__codelineno-0-10"></a><span class="k">def</span> <span class="nf">cdktf_command</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">click</span><span class="o">.</span><span class="n">Command</span><span class="p">:</span>
+<span class="normal"><a href="#__codelineno-0-25">25</a></span>
+<span class="normal"><a href="#__codelineno-0-26">26</a></span>
+<span class="normal"><a href="#__codelineno-0-27">27</a></span>
+<span class="normal"><a href="#__codelineno-0-28">28</a></span>
+<span class="normal"><a href="#__codelineno-0-29">29</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-10" name="__codelineno-0-10"></a><span class="k">def</span> <span class="nf">cdktf_command</span><span class="p">(</span><span class="n">base_command</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">click</span><span class="o">.</span><span class="n">Command</span><span class="p">:</span>
 <a id="__codelineno-0-11" name="__codelineno-0-11"></a>    <span class="nd">@click</span><span class="o">.</span><span class="n">command</span><span class="p">(</span>
 <a id="__codelineno-0-12" name="__codelineno-0-12"></a>        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;cdktf_cmd&quot;</span><span class="p">,</span>
 <a id="__codelineno-0-13" name="__codelineno-0-13"></a>        <span class="n">short_help</span><span class="o">=</span><span class="s2">&quot;CLI for deploying workflow projects.&quot;</span><span class="p">,</span>
@@ -1508,14 +1544,18 @@
 <a id="__codelineno-0-15" name="__codelineno-0-15"></a>        <span class="n">add_help_option</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
 <a id="__codelineno-0-16" name="__codelineno-0-16"></a>    <span class="p">)</span>
 <a id="__codelineno-0-17" name="__codelineno-0-17"></a>    <span class="nd">@click</span><span class="o">.</span><span class="n">argument</span><span class="p">(</span><span class="s2">&quot;args&quot;</span><span class="p">,</span> <span class="n">nargs</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
-<a id="__codelineno-0-18" name="__codelineno-0-18"></a>    <span class="k">def</span> <span class="nf">cmd</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-18" name="__codelineno-0-18"></a>    <span class="k">def</span> <span class="nf">cmd</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <a id="__codelineno-0-19" name="__codelineno-0-19"></a>        <span class="n">my_env</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 <a id="__codelineno-0-20" name="__codelineno-0-20"></a>        <span class="k">try</span><span class="p">:</span>
-<a id="__codelineno-0-21" name="__codelineno-0-21"></a>            <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">([</span><span class="s2">&quot;cdktf&quot;</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">],</span> <span class="n">check</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="n">my_env</span><span class="p">)</span>
-<a id="__codelineno-0-22" name="__codelineno-0-22"></a>        <span class="k">except</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">CalledProcessError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-<a id="__codelineno-0-23" name="__codelineno-0-23"></a>            <span class="k">raise</span> <span class="n">ClickException</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
-<a id="__codelineno-0-24" name="__codelineno-0-24"></a>
-<a id="__codelineno-0-25" name="__codelineno-0-25"></a>    <span class="k">return</span> <span class="n">cmd</span>
+<a id="__codelineno-0-21" name="__codelineno-0-21"></a>            <span class="n">_args</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+<a id="__codelineno-0-22" name="__codelineno-0-22"></a>            <span class="c1"># add a base command if its provided for proxying for brickflow deploy</span>
+<a id="__codelineno-0-23" name="__codelineno-0-23"></a>            <span class="k">if</span> <span class="n">base_command</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-24" name="__codelineno-0-24"></a>                <span class="n">_args</span> <span class="o">=</span> <span class="p">[</span><span class="n">base_command</span><span class="p">]</span> <span class="o">+</span> <span class="n">_args</span>
+<a id="__codelineno-0-25" name="__codelineno-0-25"></a>            <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">([</span><span class="s2">&quot;cdktf&quot;</span><span class="p">,</span> <span class="o">*</span><span class="n">_args</span><span class="p">],</span> <span class="n">check</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="n">my_env</span><span class="p">)</span>
+<a id="__codelineno-0-26" name="__codelineno-0-26"></a>        <span class="k">except</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">CalledProcessError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+<a id="__codelineno-0-27" name="__codelineno-0-27"></a>            <span class="k">raise</span> <span class="n">ClickException</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+<a id="__codelineno-0-28" name="__codelineno-0-28"></a>
+<a id="__codelineno-0-29" name="__codelineno-0-29"></a>    <span class="k">return</span> <span class="n">cmd</span>
 </code></pre></div></td></tr></table></div>
       </details>
   </div>
@@ -1538,11 +1578,77 @@
 
       <details class="quote">
         <summary>Source code in <code>brickflow/cli/__init__.py</code></summary>
-        <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-39">39</a></span>
-<span class="normal"><a href="#__codelineno-0-40">40</a></span>
-<span class="normal"><a href="#__codelineno-0-41">41</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-39" name="__codelineno-0-39"></a><span class="nd">@click</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="bp">cls</span><span class="o">=</span><span class="n">CdktfCmd</span><span class="p">)</span>
-<a id="__codelineno-0-40" name="__codelineno-0-40"></a><span class="k">def</span> <span class="nf">cli</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-41" name="__codelineno-0-41"></a>    <span class="sd">&quot;&quot;&quot;CLI for managing Databricks Workflows&quot;&quot;&quot;</span>
+        <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-45">45</a></span>
+<span class="normal"><a href="#__codelineno-0-46">46</a></span>
+<span class="normal"><a href="#__codelineno-0-47">47</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-45" name="__codelineno-0-45"></a><span class="nd">@click</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="bp">cls</span><span class="o">=</span><span class="n">CdktfCmd</span><span class="p">)</span>
+<a id="__codelineno-0-46" name="__codelineno-0-46"></a><span class="k">def</span> <span class="nf">cli</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-47" name="__codelineno-0-47"></a>    <span class="sd">&quot;&quot;&quot;CLI for managing Databricks Workflows&quot;&quot;&quot;</span>
+</code></pre></div></td></tr></table></div>
+      </details>
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h3 id="brickflow.cli.deploy" class="doc doc-heading">
+<code class="highlight language-python"><span class="n">brickflow</span><span class="o">.</span><span class="n">cli</span><span class="o">.</span><span class="n">deploy</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span></code>
+
+<a href="#brickflow.cli.deploy" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>CLI for deploying workflow projects.</p>
+
+      <details class="quote">
+        <summary>Source code in <code>brickflow/cli/__init__.py</code></summary>
+        <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-71">71</a></span>
+<span class="normal"><a href="#__codelineno-0-72">72</a></span>
+<span class="normal"><a href="#__codelineno-0-73">73</a></span>
+<span class="normal"><a href="#__codelineno-0-74">74</a></span>
+<span class="normal"><a href="#__codelineno-0-75">75</a></span>
+<span class="normal"><a href="#__codelineno-0-76">76</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-71" name="__codelineno-0-71"></a><span class="nd">@cli</span><span class="o">.</span><span class="n">command</span>
+<a id="__codelineno-0-72" name="__codelineno-0-72"></a><span class="k">def</span> <span class="nf">deploy</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-73" name="__codelineno-0-73"></a>    <span class="sd">&quot;&quot;&quot;CLI for deploying workflow projects.&quot;&quot;&quot;</span>
+<a id="__codelineno-0-74" name="__codelineno-0-74"></a>    <span class="c1"># Hack for having cdktf show up as a command in brickflow</span>
+<a id="__codelineno-0-75" name="__codelineno-0-75"></a>    <span class="c1"># with documentation.</span>
+<a id="__codelineno-0-76" name="__codelineno-0-76"></a>    <span class="k">pass</span>  <span class="c1"># pragma: no cover</span>
+</code></pre></div></td></tr></table></div>
+      </details>
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+
+<h3 id="brickflow.cli.diff" class="doc doc-heading">
+<code class="highlight language-python"><span class="n">brickflow</span><span class="o">.</span><span class="n">cli</span><span class="o">.</span><span class="n">diff</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span></code>
+
+<a href="#brickflow.cli.diff" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>CLI for deploying workflow projects.</p>
+
+      <details class="quote">
+        <summary>Source code in <code>brickflow/cli/__init__.py</code></summary>
+        <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-79">79</a></span>
+<span class="normal"><a href="#__codelineno-0-80">80</a></span>
+<span class="normal"><a href="#__codelineno-0-81">81</a></span>
+<span class="normal"><a href="#__codelineno-0-82">82</a></span>
+<span class="normal"><a href="#__codelineno-0-83">83</a></span>
+<span class="normal"><a href="#__codelineno-0-84">84</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-79" name="__codelineno-0-79"></a><span class="nd">@cli</span><span class="o">.</span><span class="n">command</span>
+<a id="__codelineno-0-80" name="__codelineno-0-80"></a><span class="k">def</span> <span class="nf">diff</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-81" name="__codelineno-0-81"></a>    <span class="sd">&quot;&quot;&quot;CLI for deploying workflow projects.&quot;&quot;&quot;</span>
+<a id="__codelineno-0-82" name="__codelineno-0-82"></a>    <span class="c1"># Hack for having cdktf show up as a command in brickflow</span>
+<a id="__codelineno-0-83" name="__codelineno-0-83"></a>    <span class="c1"># with documentation.</span>
+<a id="__codelineno-0-84" name="__codelineno-0-84"></a>    <span class="k">pass</span>  <span class="c1"># pragma: no cover</span>
 </code></pre></div></td></tr></table></div>
       </details>
   </div>
@@ -1565,15 +1671,15 @@
 
       <details class="quote">
         <summary>Source code in <code>brickflow/cli/__init__.py</code></summary>
-        <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-50">50</a></span>
-<span class="normal"><a href="#__codelineno-0-51">51</a></span>
-<span class="normal"><a href="#__codelineno-0-52">52</a></span>
-<span class="normal"><a href="#__codelineno-0-53">53</a></span>
-<span class="normal"><a href="#__codelineno-0-54">54</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-50" name="__codelineno-0-50"></a><span class="nd">@cli</span><span class="o">.</span><span class="n">command</span>
-<a id="__codelineno-0-51" name="__codelineno-0-51"></a><span class="k">def</span> <span class="nf">docs</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-52" name="__codelineno-0-52"></a>    <span class="sd">&quot;&quot;&quot;Use to open docs in your browser...&quot;&quot;&quot;</span>
-<a id="__codelineno-0-53" name="__codelineno-0-53"></a>    <span class="n">webbrowser</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;https://github.com/stikkireddy/brickflow&quot;</span><span class="p">,</span> <span class="n">new</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
-<a id="__codelineno-0-54" name="__codelineno-0-54"></a>    <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="s2">&quot;Opening browser for docs...&quot;</span><span class="p">)</span>
+        <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-56">56</a></span>
+<span class="normal"><a href="#__codelineno-0-57">57</a></span>
+<span class="normal"><a href="#__codelineno-0-58">58</a></span>
+<span class="normal"><a href="#__codelineno-0-59">59</a></span>
+<span class="normal"><a href="#__codelineno-0-60">60</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-56" name="__codelineno-0-56"></a><span class="nd">@cli</span><span class="o">.</span><span class="n">command</span>
+<a id="__codelineno-0-57" name="__codelineno-0-57"></a><span class="k">def</span> <span class="nf">docs</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-58" name="__codelineno-0-58"></a>    <span class="sd">&quot;&quot;&quot;Use to open docs in your browser...&quot;&quot;&quot;</span>
+<a id="__codelineno-0-59" name="__codelineno-0-59"></a>    <span class="n">webbrowser</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;https://github.com/stikkireddy/brickflow&quot;</span><span class="p">,</span> <span class="n">new</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<a id="__codelineno-0-60" name="__codelineno-0-60"></a>    <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="s2">&quot;Opening browser for docs...&quot;</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
       </details>
   </div>
@@ -1596,13 +1702,13 @@
 
       <details class="quote">
         <summary>Source code in <code>brickflow/cli/__init__.py</code></summary>
-        <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-44">44</a></span>
-<span class="normal"><a href="#__codelineno-0-45">45</a></span>
-<span class="normal"><a href="#__codelineno-0-46">46</a></span>
-<span class="normal"><a href="#__codelineno-0-47">47</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-44" name="__codelineno-0-44"></a><span class="nd">@cli</span><span class="o">.</span><span class="n">command</span>
-<a id="__codelineno-0-45" name="__codelineno-0-45"></a><span class="k">def</span> <span class="nf">init</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-46" name="__codelineno-0-46"></a>    <span class="sd">&quot;&quot;&quot;Initialize your project with Brickflows...&quot;&quot;&quot;</span>
-<a id="__codelineno-0-47" name="__codelineno-0-47"></a>    <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="s2">&quot;hello world&quot;</span><span class="p">)</span>
+        <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-50">50</a></span>
+<span class="normal"><a href="#__codelineno-0-51">51</a></span>
+<span class="normal"><a href="#__codelineno-0-52">52</a></span>
+<span class="normal"><a href="#__codelineno-0-53">53</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-50" name="__codelineno-0-50"></a><span class="nd">@cli</span><span class="o">.</span><span class="n">command</span>
+<a id="__codelineno-0-51" name="__codelineno-0-51"></a><span class="k">def</span> <span class="nf">init</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-52" name="__codelineno-0-52"></a>    <span class="sd">&quot;&quot;&quot;Initialize your project with Brickflows...&quot;&quot;&quot;</span>
+<a id="__codelineno-0-53" name="__codelineno-0-53"></a>    <span class="n">click</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="s2">&quot;hello world&quot;</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
       </details>
   </div>
