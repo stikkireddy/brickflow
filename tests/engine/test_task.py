@@ -14,6 +14,14 @@ from brickflow.engine.task import (
     InvalidTaskSignatureDefinition,
     EmailNotifications,
     TaskSettings,
+    JarTaskLibrary,
+    EggTaskLibrary,
+    WheelTaskLibrary,
+    PypiTaskLibrary,
+    MavenTaskLibrary,
+    CranTaskLibrary,
+    InvalidTaskLibraryError,
+    TaskLibrary,
 )
 from brickflow.tf.databricks import JobTaskNotebookTask
 from tests.engine.sample_workflow import (
@@ -288,3 +296,41 @@ class TestTask:
             "min_retry_interval_millis": default_int,
             "retry_on_timeout": default_bool,
         }
+
+    def test_task_libraries(self):
+        s3_path = "s3://somepath-in-s3"
+        repo = "somerepo"
+        package = "somepackage"
+        coordinates = package
+        exclusions = None
+        assert JarTaskLibrary(s3_path).dict == {"jar": s3_path}
+        assert EggTaskLibrary(s3_path).dict == {"egg": s3_path}
+        assert WheelTaskLibrary(s3_path).dict == {"whl": s3_path}
+        assert PypiTaskLibrary(package, repo).dict == {
+            "pypi": {"package": package, "repo": repo}
+        }
+        assert MavenTaskLibrary(coordinates, repo, exclusions).dict == {
+            "maven": {
+                "coordinates": coordinates,
+                "repo": repo,
+                "exclusions": exclusions,
+            }
+        }
+        assert CranTaskLibrary(package, repo).dict == {
+            "cran": {"package": package, "repo": repo}
+        }
+
+    def test_invalid_storage_library_path(self):
+        with pytest.raises(InvalidTaskLibraryError):
+            JarTaskLibrary("somebadpath")
+
+    def test_task_library_unique_list(self):
+        s3_path = "s3://somepath-in-s3"
+        assert TaskLibrary.unique_libraries(
+            [
+                JarTaskLibrary(s3_path),
+                JarTaskLibrary(s3_path),
+            ]
+        ) == [JarTaskLibrary(s3_path)]
+
+        assert TaskLibrary.unique_libraries(None) == []

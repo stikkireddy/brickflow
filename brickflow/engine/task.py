@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import dataclasses
 import inspect
 import logging
 import numbers
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Callable, List, Dict, Union, Optional, Any, Tuple, TYPE_CHECKING
+
 from decouple import config
 
 from brickflow.context import (
@@ -48,6 +50,10 @@ class NoCallableTaskError(Exception):
     pass
 
 
+class InvalidTaskLibraryError(Exception):
+    pass
+
+
 class BrickflowTaskEnvVars(Enum):
     BRICKFLOW_SELECT_TASKS = "BRICKFLOW_SELECT_TASKS"
 
@@ -61,6 +67,117 @@ class TaskType(Enum):
     NOTEBOOK = "notebook_task"
     SQL = "sql_task"
     CUSTOM_PYTHON_TASK = "custom_python_task"
+
+
+@dataclass(frozen=True)
+class TaskLibrary:
+    @staticmethod
+    def unique_libraries(
+        library_list: Optional[List["TaskLibrary"]],
+    ) -> List["TaskLibrary"]:
+        if library_list is None:
+            return []
+        return list(set(library_list))
+
+    @property
+    def dict(self) -> Dict[str, Union[str | Dict[str, str]]]:
+        return dataclasses.asdict(self)
+
+    @staticmethod
+    def starts_with_values(value: str, prefix_list: List[str]) -> bool:
+        return any([value.startswith(prefix) for prefix in prefix_list])
+
+    def validate_starts_with_values(self, value: str, prefix_list: List[str]) -> None:
+        if not TaskLibrary.starts_with_values(value, prefix_list):
+            raise InvalidTaskLibraryError(
+                f"Invalid library configured for: {self.__class__.__name__}; "
+                f"with value {value}; the valid prefix lists are: {prefix_list}"
+            )
+
+
+@dataclass(frozen=True)
+class StorageBasedTaskLibrary(TaskLibrary):
+    def __post_init__(self) -> None:
+        storage_lib = dataclasses.asdict(self)
+        for k, v in storage_lib.items():
+            self.validate_starts_with_values(v, ["dbfs:/", "s3://"])
+
+
+@dataclass(frozen=True)
+class JarTaskLibrary(StorageBasedTaskLibrary):
+    """
+    Args:
+        jar: String to s3/dbfs path for jar
+    """
+    jar: str
+
+
+@dataclass(frozen=True)
+class EggTaskLibrary(StorageBasedTaskLibrary):
+    """
+    Args:
+        egg: String to s3/dbfs path for egg
+    """
+    egg: str
+
+
+@dataclass(frozen=True)
+class WheelTaskLibrary(StorageBasedTaskLibrary):
+    """
+    Args:
+        whl: String to s3/dbfs path for whl
+    """
+    whl: str
+
+
+@dataclass(frozen=True)
+class PypiTaskLibrary(TaskLibrary):
+    """
+    Args:
+        package: The package in pypi i.e. requests, requests==x.y.z, git+https://github.com/stikkireddy/brickflow.git
+        repo: The repository where the package can be found. By default pypi is used
+    """
+    package: str
+    repo: Optional[str] = None
+
+    @property
+    def dict(self) -> Dict[str, Union[str, Dict[str, str]]]:
+        return {"pypi": dataclasses.asdict(self)}
+
+
+@dataclass(frozen=True)
+class MavenTaskLibrary(TaskLibrary):
+    """
+    Args:
+        coordinates: Gradle-style Maven coordinates. For example: org.jsoup:jsoup:1.7.2.
+        repo: Maven repo to install the Maven package from.
+            If omitted, both Maven Central Repository and Spark Packages are searched.
+        exclusions: List of dependences to exclude. For example: ["slf4j:slf4j", "*:hadoop-client"].
+            Maven dependency exclusions:
+            https://maven.apache.org/guides/introduction/introduction-to-optional-and-excludes-dependencies.html.
+    """
+    coordinates: str
+    repo: Optional[str] = None
+    exclusions: Optional[List[str]] = None
+
+    @property
+    def dict(self) -> Dict[str, Union[str, Dict[str, str]]]:
+        return {"maven": dataclasses.asdict(self)}
+
+
+@dataclass(frozen=True)
+class CranTaskLibrary(TaskLibrary):
+    """
+    Args:
+        package: The name of the CRAN package to install.
+        repo: The repository where the package can be found. If not specified, the default CRAN repo is used.
+    """
+    package: str
+    repo: Optional[str] = None
+
+    @property
+    def dict(self) -> Dict[str, Union[str, Dict[str, str]]]:
+        return {"cran": dataclasses.asdict(self)}
 
 
 @dataclass(frozen=True)
@@ -133,6 +250,7 @@ class Task:
     workflow: Workflow  # noqa
     compute: Optional[Compute] = None
     description: Optional[str] = None
+    libraries: List[TaskLibrary] = field(default_factory=lambda: [])
     depends_on: List[Union[Callable, str]] = field(default_factory=lambda: [])
     task_type: TaskType = TaskType.NOTEBOOK
     trigger_rule: BrickflowTriggerRule = BrickflowTriggerRule.ALL_SUCCESS

@@ -43,6 +43,19 @@ class TestCli:
 
     @patch("os.environ.copy", wraps=os.environ.copy)
     @patch("subprocess.run")
+    def test_deploy(self, run_mock: Mock, os_environ_mock: Mock):
+        runner = CliRunner()
+        run_mock.side_effect = fake_run
+        result = runner.invoke(cli, ["diff"])  # noqa
+        run_mock.assert_called_once_with(
+            ["cdktf", "diff"], check=True, env=os.environ.copy()
+        )
+        os_environ_mock.assert_called()
+        assert result.exit_code == 0
+        assert result.output.strip() == "hello world"
+
+    @patch("os.environ.copy", wraps=os.environ.copy)
+    @patch("subprocess.run")
     def test_cdktf_error(self, run_mock: Mock, os_environ_mock: Mock):
         runner = CliRunner()
         run_mock.side_effect = fake_run_with_error

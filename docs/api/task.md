@@ -5,6 +5,12 @@
         members:
             - Task
             - EmailNotifications
+            - JarTaskLibrary
+            - EggTaskLibrary
+            - WheelTaskLibrary
+            - PypiTaskLibrary
+            - MavenTaskLibrary
+            - CranTaskLibrary
             - BrickflowTriggerRule
             - BrickflowTaskEnvVars
             - TaskSettings

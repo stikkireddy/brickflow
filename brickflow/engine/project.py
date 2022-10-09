@@ -11,7 +11,7 @@ from decouple import config
 
 from brickflow.context import ctx, BrickflowInternalVariables
 from brickflow.engine import is_git_dirty, get_current_commit
-from brickflow.engine.task import TaskType
+from brickflow.engine.task import TaskType, TaskLibrary
 from brickflow.engine.utils import wraps_keyerror
 from brickflow.engine.workflow import Workflow
 
@@ -45,6 +45,7 @@ class _Project:
     s3_backend: Optional[str] = None
     entry_point_path: Optional[str] = None
     workflows: Dict[str, Workflow] = field(default_factory=lambda: {})
+    libraries: Optional[List[TaskLibrary]] = None
 
     def add_pkg(self, pkg: ModuleType) -> None:
         file_name = pkg.__file__
@@ -93,6 +94,11 @@ class _Project:
                 else TaskType.NOTEBOOK.value
             )
 
+            libraries = TaskLibrary.unique_libraries(
+                task.libraries + (self.libraries or [])
+            )
+            task_libraries = [library.dict for library in libraries]
+
             task_settings = workflow.default_task_settings.merge(task.task_settings)
             tasks.append(
                 JobTask(
@@ -100,6 +106,7 @@ class _Project:
                         tf_task_type: task.get_tf_obj(self.entry_point_path),
                         **task_settings.to_tf_dict(),
                     },
+                    library=task_libraries,
                     depends_on=depends_on,
                     task_key=task_name,
                     existing_cluster_id=workflow.existing_cluster_id,
@@ -198,6 +205,7 @@ class Project:
     debug_execute_task: Optional[str] = None
     git_repo: Optional[str] = None
     provider: Optional[str] = None
+    libraries: Optional[List[TaskLibrary]] = None
     git_reference: Optional[str] = None
     s3_backend: Optional[str] = None
     entry_point_path: Optional[str] = None
@@ -238,6 +246,7 @@ class Project:
             self.git_reference,
             self.s3_backend,
             self.entry_point_path,
+            libraries=self.libraries or [],
         )
         return self._project
 

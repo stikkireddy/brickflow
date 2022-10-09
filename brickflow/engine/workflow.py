@@ -17,6 +17,7 @@ from brickflow.engine.task import (
     BrickflowTriggerRule,
     TaskSettings,
     NoCallableTaskError,
+    TaskLibrary,
 )
 from brickflow.engine.utils import wraps_keyerror
 
@@ -81,6 +82,7 @@ class Workflow:
     compute: Dict[str, Compute] = field(default_factory=lambda: {})
     existing_cluster_id: Optional[str] = None
     default_task_settings: TaskSettings = TaskSettings()
+    libraries: List[TaskLibrary] = field(default_factory=lambda: [])
     tags: Optional[Dict[str, str]] = None
     max_concurrent_runs: int = 1
     permissions: WorkflowPermissions = WorkflowPermissions()
@@ -160,6 +162,7 @@ class Workflow:
         task_id: str,
         description: Optional[str] = None,
         compute: Optional[Compute] = None,
+        libraries: Optional[List[TaskLibrary]] = None,
         task_type: TaskType = TaskType.NOTEBOOK,
         depends_on: Optional[Union[Callable, str, List[Union[Callable, str]]]] = None,
         trigger_rule: BrickflowTriggerRule = BrickflowTriggerRule.ALL_SUCCESS,
@@ -170,6 +173,7 @@ class Workflow:
                 f"Task: {task_id} already exists, please rename your function."
             )
 
+        _libraries = libraries or [] + self.libraries
         _depends_on = (
             [depends_on]
             if isinstance(depends_on, str) or callable(depends_on)
@@ -180,6 +184,7 @@ class Workflow:
             task_func=f,
             workflow=self,
             description=description,
+            libraries=_libraries,
             compute=compute or self.default_compute,
             depends_on=_depends_on or [],
             task_type=task_type,
@@ -198,6 +203,7 @@ class Workflow:
         task_func: Callable = None,
         name: str = None,
         compute: Optional[Compute] = None,
+        libraries: Optional[List[TaskLibrary]] = None,
         task_type: TaskType = TaskType.NOTEBOOK,
         depends_on: Optional[Union[Callable, str, List[Union[Callable, str]]]] = None,
         trigger_rule: BrickflowTriggerRule = BrickflowTriggerRule.ALL_SUCCESS,
@@ -211,6 +217,7 @@ class Workflow:
                 task_id,
                 compute=compute,
                 task_type=task_type,
+                libraries=libraries,
                 depends_on=depends_on,
                 trigger_rule=trigger_rule,
                 custom_execute_callback=custom_execute_callback,
