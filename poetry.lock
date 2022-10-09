@@ -116,7 +116,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 
 [[package]]
 name = "constructs"
-version = "10.1.125"
+version = "10.1.126"
 description = "A programming model for software-defined state"
 category = "main"
 optional = false
@@ -1047,8 +1047,8 @@ colorama = [
     {file = "colorama-0.4.5.tar.gz", hash = "sha256:e6c6b4334fc50988a639d9b98aa429a0b57da6e17b9a44f0451f930b6967b7a4"},
 ]
 constructs = [
-    {file = "constructs-10.1.125-py3-none-any.whl", hash = "sha256:de4290eb5d3289b0c06b3f286b0f76db0dc00dda8d8b28e2249e0291920d7a56"},
-    {file = "constructs-10.1.125.tar.gz", hash = "sha256:6385f8a4af8d395514730363171d69f7005b0b736b7e5c0d5bf616abc7cd3f25"},
+    {file = "constructs-10.1.126-py3-none-any.whl", hash = "sha256:471b56253fba9390f35fd6a06abfb37bcbbe4fd25956e371ea771d22abb1671d"},
+    {file = "constructs-10.1.126.tar.gz", hash = "sha256:fa90813f6f3e278f363f2786e0bcb11e256c33110efc34afa7eb2eb19aff6d1e"},
 ]
 coverage = [
     {file = "coverage-6.5.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:ef8674b0ee8cc11e2d574e3e2998aea5df5ab242e012286824ea3c6970580e53"},
