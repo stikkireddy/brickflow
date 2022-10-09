@@ -32,6 +32,9 @@ coverage: check test
 docs:
 	@poetry run mkdocs serve
 
+deploy-docs:
+	@poetry run mkdocs gh-deploy --force
+
 docker:
 	docker build -t brickflow:latest .
 

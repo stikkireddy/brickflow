@@ -20,7 +20,7 @@ from brickflow.context import (
     RETURN_VALUE_KEY,
 )
 from brickflow.engine import ROOT_NODE, with_brickflow_logger
-from brickflow.engine.compute import Compute
+from brickflow.engine.compute import Cluster
 
 if TYPE_CHECKING:
     from brickflow.engine.workflow import Workflow  # pragma: no cover
@@ -85,7 +85,7 @@ class TaskLibrary:
 
     @staticmethod
     def starts_with_values(value: str, prefix_list: List[str]) -> bool:
-        return any([value.startswith(prefix) for prefix in prefix_list])
+        return any(value.startswith(prefix) for prefix in prefix_list)
 
     def validate_starts_with_values(self, value: str, prefix_list: List[str]) -> None:
         if not TaskLibrary.starts_with_values(value, prefix_list):
@@ -99,7 +99,7 @@ class TaskLibrary:
 class StorageBasedTaskLibrary(TaskLibrary):
     def __post_init__(self) -> None:
         storage_lib = dataclasses.asdict(self)
-        for k, v in storage_lib.items():
+        for _, v in storage_lib.items():
             self.validate_starts_with_values(v, ["dbfs:/", "s3://"])
 
 
@@ -109,6 +109,7 @@ class JarTaskLibrary(StorageBasedTaskLibrary):
     Args:
         jar: String to s3/dbfs path for jar
     """
+
     jar: str
 
 
@@ -118,6 +119,7 @@ class EggTaskLibrary(StorageBasedTaskLibrary):
     Args:
         egg: String to s3/dbfs path for egg
     """
+
     egg: str
 
 
@@ -127,6 +129,7 @@ class WheelTaskLibrary(StorageBasedTaskLibrary):
     Args:
         whl: String to s3/dbfs path for whl
     """
+
     whl: str
 
 
@@ -137,6 +140,7 @@ class PypiTaskLibrary(TaskLibrary):
         package: The package in pypi i.e. requests, requests==x.y.z, git+https://github.com/stikkireddy/brickflow.git
         repo: The repository where the package can be found. By default pypi is used
     """
+
     package: str
     repo: Optional[str] = None
 
@@ -156,6 +160,7 @@ class MavenTaskLibrary(TaskLibrary):
             Maven dependency exclusions:
             https://maven.apache.org/guides/introduction/introduction-to-optional-and-excludes-dependencies.html.
     """
+
     coordinates: str
     repo: Optional[str] = None
     exclusions: Optional[List[str]] = None
@@ -172,6 +177,7 @@ class CranTaskLibrary(TaskLibrary):
         package: The name of the CRAN package to install.
         repo: The repository where the package can be found. If not specified, the default CRAN repo is used.
     """
+
     package: str
     repo: Optional[str] = None
 
@@ -248,7 +254,7 @@ class Task:
     task_id: str
     task_func: Callable
     workflow: Workflow  # noqa
-    compute: Optional[Compute] = None
+    cluster: Cluster
     description: Optional[str] = None
     libraries: List[TaskLibrary] = field(default_factory=lambda: [])
     depends_on: List[Union[Callable, str]] = field(default_factory=lambda: [])

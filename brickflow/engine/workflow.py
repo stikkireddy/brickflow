@@ -1,13 +1,12 @@
 import abc
 import functools
 from dataclasses import dataclass, field
-from typing import Callable, List, Optional, Dict, Union, Iterator
+from typing import Callable, List, Optional, Dict, Union, Iterator, Any
 
-import attr
 import networkx as nx
 
 from brickflow.engine import ROOT_NODE
-from brickflow.engine.compute import Compute
+from brickflow.engine.compute import Cluster, DuplicateClustersDefinitionError
 from brickflow.engine.task import (
     TaskNotFoundError,
     AnotherActiveTaskError,
@@ -20,6 +19,10 @@ from brickflow.engine.task import (
     TaskLibrary,
 )
 from brickflow.engine.utils import wraps_keyerror
+
+
+class NoWorkflowComputeError(Exception):
+    pass
 
 
 @dataclass(frozen=True)
@@ -75,12 +78,13 @@ class WorkflowPermissions:
         return access_controls
 
 
+# TODO: Re-architect to make this frozen and immutable after being defined.
 @dataclass
 class Workflow:
-    name: str = attr.field(on_setattr=attr.setters.frozen)
-    default_compute: Compute = Compute(compute_id="default")
-    compute: Dict[str, Compute] = field(default_factory=lambda: {})
-    existing_cluster_id: Optional[str] = None
+    # name should be immutable and not modified after being set
+    _name: str
+    default_cluster: Optional[Cluster] = None
+    clusters: List[Cluster] = field(default_factory=lambda: [])
     default_task_settings: TaskSettings = TaskSettings()
     libraries: List[TaskLibrary] = field(default_factory=lambda: [])
     tags: Optional[Dict[str, str]] = None
@@ -92,11 +96,54 @@ class Workflow:
 
     def __post_init__(self) -> None:
         self.graph.add_node(ROOT_NODE)
-        # self.default_task_settings = self.default_task_settings or TaskSettings()
+        if self.default_cluster is None and self.clusters == []:
+            raise NoWorkflowComputeError(
+                f"Please configure default_cluster or "
+                f"clusters field for workflow: {self.name}"
+            )
+        if self.default_cluster is None:
+            # the default cluster is set to the first cluster if it is not configured
+            self.default_cluster = self.clusters[0]
 
-        self.default_compute.set_to_default()
-        self.compute = {"default": self.default_compute}
-        # self.compute = (compute and {c.compute_id: c for c in compute}) or {"default": self.default_compute}
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def unique_new_clusters(self) -> List[Cluster]:
+        clusters = (
+            [v.cluster for k, v in self.tasks.items()]
+            + self.clusters
+            + [self.default_cluster]
+        )
+        return list(
+            set([c for c in clusters if c is not None and c.is_new_job_cluster])
+        )
+
+    def unique_new_clusters_dict(self) -> List[Dict[str, Any]]:
+        self.validate_new_clusters_with_unique_names()
+        all_unique_clusters = self.unique_new_clusters
+        return [
+            {"job_cluster_key": c.name, "new_cluster": c.dict}
+            for c in all_unique_clusters
+        ]
+
+    def validate_new_clusters_with_unique_names(self) -> None:
+        all_unique_clusters = self.unique_new_clusters
+        unique_name_list: Dict[str, Optional[str]] = {}
+        duplicates = []
+        for cluster in all_unique_clusters:
+            if cluster.name not in unique_name_list:
+                unique_name_list[cluster.name] = None
+            else:
+                duplicates.append(cluster.name)
+
+        duplicate_list = list(set(duplicates))
+        if len(duplicate_list) > 0:
+            raise DuplicateClustersDefinitionError(
+                f"Found duplicate cluster definitions in your workflow: {self.name}, "
+                f"with names: {duplicate_list}"
+            )
 
     @property
     def bfs_layers(self) -> List[str]:
@@ -161,7 +208,7 @@ class Workflow:
         f: Callable,
         task_id: str,
         description: Optional[str] = None,
-        compute: Optional[Compute] = None,
+        cluster: Optional[Cluster] = None,
         libraries: Optional[List[TaskLibrary]] = None,
         task_type: TaskType = TaskType.NOTEBOOK,
         depends_on: Optional[Union[Callable, str, List[Union[Callable, str]]]] = None,
@@ -171,6 +218,11 @@ class Workflow:
         if self.task_exists(task_id):
             raise TaskAlreadyExistsError(
                 f"Task: {task_id} already exists, please rename your function."
+            )
+
+        if self.default_cluster is None:
+            raise RuntimeError(
+                "Some how default cluster wasnt set please raise a github issue."
             )
 
         _libraries = libraries or [] + self.libraries
@@ -185,7 +237,7 @@ class Workflow:
             workflow=self,
             description=description,
             libraries=_libraries,
-            compute=compute or self.default_compute,
+            cluster=cluster or self.default_cluster,
             depends_on=_depends_on or [],
             task_type=task_type,
             trigger_rule=trigger_rule,
@@ -202,7 +254,7 @@ class Workflow:
         self,
         task_func: Callable = None,
         name: str = None,
-        compute: Optional[Compute] = None,
+        cluster: Optional[Cluster] = None,
         libraries: Optional[List[TaskLibrary]] = None,
         task_type: TaskType = TaskType.NOTEBOOK,
         depends_on: Optional[Union[Callable, str, List[Union[Callable, str]]]] = None,
@@ -215,7 +267,7 @@ class Workflow:
             self._add_task(
                 f,
                 task_id,
-                compute=compute,
+                cluster=cluster,
                 task_type=task_type,
                 libraries=libraries,
                 depends_on=depends_on,

@@ -333,4 +333,4 @@ class TestTask:
             ]
         ) == [JarTaskLibrary(s3_path)]
 
-        assert TaskLibrary.unique_libraries(None) == []
+        assert not TaskLibrary.unique_libraries(None)

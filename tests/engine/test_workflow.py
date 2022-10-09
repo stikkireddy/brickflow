@@ -1,5 +1,6 @@
 import pytest
 
+from brickflow.engine.compute import Cluster, DuplicateClustersDefinitionError
 from brickflow.engine.task import (
     Task,
     TaskType,
@@ -9,21 +10,14 @@ from brickflow.engine.task import (
     NoCallableTaskError,
     TaskNotFoundError,
 )
-from brickflow.engine.workflow import User, Group, ServicePrincipal
+from brickflow.engine.workflow import (
+    User,
+    Group,
+    ServicePrincipal,
+    Workflow,
+    NoWorkflowComputeError,
+)
 from tests.engine.sample_workflow import wf, task_function
-
-
-# def pop_task(task_key):
-#     def wrapper(f):
-#         @functools.wraps(f)
-#         def func(*args, **kwargs):
-#             resp = f(*args, **kwargs)
-#             wf._tasks.pop(task_key)
-#             return resp
-#
-#         return func
-#
-#     return wrapper
 
 
 class TestWorkflow:
@@ -33,11 +27,40 @@ class TestWorkflow:
         assert t.task_func is not None
         assert t.workflow == wf
         # task compute is workflow default compute
-        assert t.compute == wf.default_compute
+        assert t.cluster == wf.default_cluster
         assert t.depends_on == []
         assert t.task_type == TaskType.NOTEBOOK
         assert t.trigger_rule == BrickflowTriggerRule.ALL_SUCCESS
         assert t.custom_execute_callback is None
+
+    def test_create_workflow_no_compute(self):
+        with pytest.raises(NoWorkflowComputeError):
+            Workflow("test")
+
+    def test_create_workflow_with_duplicate_compute(self):
+        with pytest.raises(DuplicateClustersDefinitionError):
+            compute = [
+                Cluster("name", "spark"),
+                Cluster("name2", "spark1"),
+                Cluster("name", "spark"),
+                Cluster("name2", "spark"),
+                Cluster("name3", "spark"),
+            ]
+            this_wf = Workflow("test", clusters=compute)
+            this_wf.validate_new_clusters_with_unique_names()
+
+    def test_default_cluster_isnt_empty(self):
+        with pytest.raises(RuntimeError):
+            compute = [
+                Cluster("name", "spark"),
+            ]
+            this_wf = Workflow("test", clusters=compute)
+            this_wf.default_cluster = None
+            this_wf._add_task(f=lambda: 123, task_id="taskid")
+
+    def test_create_workflow_set_default_cluster(self):
+        this_wf = Workflow("test", clusters=[Cluster("name", "spark")])
+        assert this_wf.default_cluster == this_wf.clusters[0]
 
     def test_add_existing_task_name(self):
         with pytest.raises(TaskAlreadyExistsError):
@@ -63,12 +86,6 @@ class TestWorkflow:
     def test_deco_no_args(self):
         with pytest.raises(NoCallableTaskError):
             wf.task("hello world")
-
-    def test_existing_cluster_id(self):
-        assert wf.existing_cluster_id is None
-
-    def test_default_compute(self):
-        assert wf.default_compute == wf.compute["default"]
 
     def test_get_tasks(self):
         assert len(wf.tasks) == 7

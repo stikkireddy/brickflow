@@ -206,3 +206,5 @@ main*.py
 .coverage
 coverage.xml
 site
+scripts
+__pycache__

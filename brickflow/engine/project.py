@@ -100,6 +100,7 @@ class _Project:
             task_libraries = [library.dict for library in libraries]
 
             task_settings = workflow.default_task_settings.merge(task.task_settings)
+
             tasks.append(
                 JobTask(
                     **{
@@ -109,7 +110,9 @@ class _Project:
                     library=task_libraries,
                     depends_on=depends_on,
                     task_key=task_name,
-                    existing_cluster_id=workflow.existing_cluster_id,
+                    # unpack dictionary provided by cluster object, will either be key or
+                    # existing cluster id
+                    **task.cluster.job_task_field_dict,
                 )
             )
         tasks.sort(key=lambda t: (t.task_key is None, t.task_key))
@@ -167,7 +170,7 @@ class _Project:
             git_conf = JobGitSource(
                 url=self.git_repo or "", provider=self.provider, **{ref_type: ref_value}
             )
-            # tasks = []
+            workflow_clusters = workflow.unique_new_clusters_dict()
             tasks = self._create_workflow_tasks(workflow)
             job = Job(
                 stack,
@@ -176,6 +179,7 @@ class _Project:
                 task=tasks,
                 git_source=git_conf,
                 tags=workflow.tags,
+                job_cluster=workflow_clusters,
                 max_concurrent_runs=workflow.max_concurrent_runs,
             )
             if workflow.permissions.to_access_controls():

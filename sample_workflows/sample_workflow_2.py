@@ -1,8 +1,10 @@
+from brickflow.engine.compute import Cluster
 from brickflow.engine.task import BrickflowTriggerRule, TaskType, CustomTaskResponse
 from brickflow.engine.workflow import Workflow, WorkflowPermissions, User
 
 wf = Workflow(
     "test2",
+    default_cluster=Cluster.from_existing_cluster("existing_cluster_id"),
     permissions=WorkflowPermissions(
         owner=User("abc@abc.com"),
         can_manage_run=[User("abc@abc.com")],
