@@ -36,6 +36,7 @@ networkx = ">=2"
 cdktf = {version = ">=0.12.3",  optional = true }
 pendulum = "^2.1.2"
 Jinja2 = "^3.1.2"
+click = "^8.1.3"
 
 [tool.poetry.scripts]
 bf = "brickflow.cli:cli"
