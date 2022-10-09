@@ -55,7 +55,8 @@ class CdktfCmd(click.Group):
             raise ctx.fail(f"No such command '{cmd_name}'.")
 
 
-@click.group(cls=CdktfCmd)
+@click.group(invoke_without_command=True,no_args_is_help=True, cls=CdktfCmd)
+@click.version_option(prog_name="brickflow")
 def cli() -> None:
     """CLI for managing Databricks Workflows"""
 
@@ -98,7 +99,7 @@ def init(project_name: str, git_provider: str, workflows_dir: str) -> None:
 @cli.command
 def docs() -> None:
     """Use to open docs in your browser..."""
-    webbrowser.open("https://github.com/stikkireddy/brickflow", new=2)
+    webbrowser.open("https://stikkireddy.github.io/brickflow/", new=2)
     click.echo("Opening browser for docs...")
 
 
