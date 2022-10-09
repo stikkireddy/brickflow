@@ -1,7 +1,5 @@
 # Brickflow
 
-
-
 <p align="center">
     <b>Framework for deploying scalable workflows in Databricks.</b>
 </p>

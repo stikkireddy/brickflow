@@ -23,8 +23,14 @@ test:
 	poetry run coverage report -m && \
 	poetry run coverage html
 
+poetry:
+	@poetry lock
+	@poetry install --with dev
+
 coverage: check test
 
+docs:
+	@poetry run mkdocs serve
 
 docker:
 	docker build -t brickflow:latest .
@@ -32,3 +38,6 @@ docker:
 poetry-install:
 	@pip install poetry
 	@poetry self add "poetry-dynamic-versioning[plugin]"
+
+
+.PHONY: docs

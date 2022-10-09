@@ -89,9 +89,9 @@ class TestContext:
         assert id(ctx) == id(Context())
         ctx._dbutils = dbutils
         assert ctx.current_task is None
-        ctx.set_current_task(task_key)
+        ctx._set_current_task(task_key)
         assert ctx.current_task == task_key
-        ctx.reset_current_task()
+        ctx._reset_current_task()
         assert ctx.current_task is None
 
         for e in BrickflowBuiltInTaskVariables:
@@ -111,7 +111,7 @@ class TestContext:
         assert ctx.get_return_value(task_key) == some_return_value
         task_coms.get.assert_called_once_with(task_key, RETURN_VALUE_KEY)
         # set the current task
-        ctx.set_current_task(current_task)
+        ctx._set_current_task(current_task)
         ctx.skip_all_except(task_key)
         task_coms.put.assert_called_with(current_task, BRANCH_SKIP_EXCEPT, task_key)
         ctx.skip_all_except(fake_task)
@@ -122,7 +122,7 @@ class TestContext:
         task_coms.put.assert_called_with(
             current_task, BRANCH_SKIP_EXCEPT, SKIP_EXCEPT_HACK
         )
-        ctx.reset_current_task()
+        ctx._reset_current_task()
 
     def test_context_skip_runtime_error(self):
         with pytest.raises(RuntimeError):

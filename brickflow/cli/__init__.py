@@ -39,7 +39,6 @@ class CdktfCmd(click.Group):
 @click.group(cls=CdktfCmd)
 def cli() -> None:
     """CLI for managing Databricks Workflows"""
-    pass
 
 
 @cli.command

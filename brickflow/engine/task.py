@@ -275,7 +275,7 @@ class Task:
         #   2. Check to see if the previous task is skipped and trigger rule.
         #   3. Check to see if this a custom python task and execute it
         #   4. Execute the task function
-        ctx.set_current_task(self.name)
+        ctx._set_current_task(self.name)
         _select_task_skip, _select_task_skip_reason = self._skip_because_not_selected()
         if _select_task_skip is True:
             # check if this task is skipped due to task selection
@@ -284,13 +284,13 @@ class Task:
                 self.name,
                 _select_task_skip_reason,
             )
-            ctx.reset_current_task()
+            ctx._reset_current_task()
             return
         _skip, reason = self.should_skip()
         if _skip is True:
             logging.info("Skipping task... %s for reason: %s", self.name, reason)
             ctx.task_coms.put(self.name, BRANCH_SKIP_EXCEPT, SKIP_EXCEPT_HACK)
-            ctx.reset_current_task()
+            ctx._reset_current_task()
             return
         return_value = TaskComsObjectResult.NO_RESULTS
         if (
@@ -304,5 +304,5 @@ class Task:
             # TODO: Inject context object
             return_value = self.task_func()
         ctx.task_coms.put(self.name, RETURN_VALUE_KEY, return_value)
-        ctx.reset_current_task()
+        ctx._reset_current_task()
         return return_value

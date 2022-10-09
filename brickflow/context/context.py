@@ -165,10 +165,10 @@ class Context:
     def current_task(self) -> Optional[str]:
         return self._current_task
 
-    def set_current_task(self, task_key: str) -> None:
+    def _set_current_task(self, task_key: str) -> None:
         self._current_task = task_key
 
-    def reset_current_task(self) -> None:
+    def _reset_current_task(self) -> None:
         self._current_task = None
 
     def get_return_value(self, task_key: Union[str, Callable]) -> Any:
