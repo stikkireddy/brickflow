@@ -5,6 +5,8 @@ import logging
 import subprocess
 from typing import Callable, Optional
 
+from brickflow import log
+
 
 def _call(cmd: str, **kwargs: bool) -> bytes:
     return subprocess.check_output(  # type: ignore
@@ -54,7 +56,7 @@ def with_brickflow_logger(f: Callable) -> Callable:
     @functools.wraps(f)
     def func(*args, **kwargs):  # type: ignore
         _self = args[0]
-        logger = logging.getLogger(__name__)  # Logger
+        logger = log
         logger.setLevel(logging.INFO)
         back_up_logging_handlers = logger.handlers
         logger.handlers = []
