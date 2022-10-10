@@ -7,12 +7,12 @@ import pytest
 from brickflow.context import ctx, BrickflowInternalVariables
 from brickflow.engine.project import (
     Project,
-    BrickFlowEnvVars,
     Stage,
     GitRepoIsDirtyError,
     WorkflowAlreadyExistsError,
     get_caller_info,
 )
+from brickflow.engine import BrickflowEnvVars
 from tests.engine.sample_workflow import wf, task_function
 
 
@@ -32,7 +32,7 @@ class TestProject:
         assert ctx.get_return_value(task_key=task_function) == task_function()
 
     @mock.patch.dict(
-        os.environ, {BrickFlowEnvVars.BRICKFLOW_MODE.value: Stage.deploy.value}
+        os.environ, {BrickflowEnvVars.BRICKFLOW_MODE.value: Stage.deploy.value}
     )
     @patch("subprocess.check_output")
     @patch("brickflow.context.ctx.dbutils_widget_get_or_else")
@@ -60,7 +60,7 @@ class TestProject:
         assert ctx.get_return_value(task_key=task_function) == task_function()
 
     @mock.patch.dict(
-        os.environ, {BrickFlowEnvVars.BRICKFLOW_MODE.value: Stage.deploy.value}
+        os.environ, {BrickflowEnvVars.BRICKFLOW_MODE.value: Stage.deploy.value}
     )
     @patch("subprocess.check_output")
     @patch("brickflow.context.ctx.dbutils_widget_get_or_else")
@@ -99,7 +99,7 @@ class TestProject:
             f.add_workflow(wf)
 
     @mock.patch.dict(
-        os.environ, {BrickFlowEnvVars.BRICKFLOW_MODE.value: Stage.deploy.value}
+        os.environ, {BrickflowEnvVars.BRICKFLOW_MODE.value: Stage.deploy.value}
     )
     @patch("subprocess.check_output")
     @patch("brickflow.context.ctx.dbutils_widget_get_or_else")

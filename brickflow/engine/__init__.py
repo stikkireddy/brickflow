@@ -3,9 +3,19 @@ from __future__ import annotations
 import functools
 import logging
 import subprocess
+from enum import Enum
 from typing import Callable, Optional
 
 from brickflow import log
+
+
+class BrickflowEnvVars(Enum):
+    BRICKFLOW_FORCE_DEPLOY = "BRICKFLOW_FORCE_DEPLOY"
+    BRICKFLOW_MODE = "BRICKFLOW_MODE"
+    BRICKFLOW_GIT_REPO = "BRICKFLOW_GIT_REPO"
+    BRICKFLOW_GIT_REF = "BRICKFLOW_GIT_REF"
+    BRICKFLOW_GIT_PROVIDER = "BRICKFLOW_GIT_PROVIDER"
+    BRICKFLOW_LOCAL_MODE = "BRICKFLOW_LOCAL_MODE"
 
 
 def _call(cmd: str, **kwargs: bool) -> bytes:

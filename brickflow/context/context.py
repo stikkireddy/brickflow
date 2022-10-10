@@ -1,10 +1,13 @@
 import base64
 import binascii
 import functools
+import logging
 import pickle
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional, Any, Union, Callable, Hashable, Dict, List
+
+from brickflow import log
 
 BRANCH_SKIP_EXCEPT = "branch_skip_except"
 SKIP_EXCEPT_HACK = "brickflow_hack_skip_all"
@@ -219,6 +222,10 @@ class Context:
     @bind_variable(BrickflowBuiltInTaskVariables.start_time)
     def start_time(self, *, debug: Optional[str]) -> str:
         pass
+
+    @property
+    def log(self) -> logging.Logger:
+        return log
 
     @property
     def dbutils(self) -> "DBUtils":  # type: ignore # noqa

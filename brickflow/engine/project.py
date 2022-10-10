@@ -10,7 +10,7 @@ from decouple import config
 
 from brickflow import log
 from brickflow.context import ctx, BrickflowInternalVariables
-from brickflow.engine import is_git_dirty, get_current_commit
+from brickflow.engine import is_git_dirty, get_current_commit, BrickflowEnvVars
 from brickflow.engine.task import TaskType, TaskLibrary
 from brickflow.engine.utils import wraps_keyerror
 from brickflow.engine.workflow import Workflow
@@ -26,14 +26,6 @@ class WorkflowNotFoundError(Exception):
 
 class GitRepoIsDirtyError(Exception):
     pass
-
-
-class BrickFlowEnvVars(Enum):
-    BRICKFLOW_FORCE_DEPLOY = "BRICKFLOW_FORCE_DEPLOY"
-    BRICKFLOW_MODE = "BRICKFLOW_MODE"
-    BRICKFLOW_GIT_REPO = "BRICKFLOW_GIT_REPO"
-    BRICKFLOW_GIT_REF = "BRICKFLOW_GIT_REF"
-    BRICKFLOW_GIT_PROVIDER = "BRICKFLOW_GIT_PROVIDER"
 
 
 # TODO: Logging
@@ -142,7 +134,7 @@ class _Project:
     def generate_tf(self, app, id_) -> None:  # type: ignore
         if (
             is_git_dirty()
-            and config(BrickFlowEnvVars.BRICKFLOW_FORCE_DEPLOY.value, default="false")
+            and config(BrickflowEnvVars.BRICKFLOW_FORCE_DEPLOY.value, default="false")
             == "false"
         ):
             raise GitRepoIsDirtyError(
@@ -150,13 +142,15 @@ class _Project:
             )
 
         # Avoid node reqs
-        from cdktf import TerraformStack
+        from cdktf import TerraformStack, Aspects
         from brickflow.tf.databricks import (
             DatabricksProvider,
             Job,
             JobGitSource,
         )
+        from brickflow.engine.aspects import LocalModeVisitor
 
+        stacks = []
         stack = None
         if self.batch is True:
             stack = TerraformStack(app, id_)
@@ -164,6 +158,7 @@ class _Project:
                 stack,
                 "Databricks",
             )
+            stacks.append(stack)
 
         for workflow_name, workflow in self.workflows.items():
             if self.batch is False:
@@ -172,6 +167,8 @@ class _Project:
                     stack,
                     "Databricks",
                 )
+                stacks.append(stack)
+
             git_ref = self.git_reference or ""
             ref_type = git_ref.split("/", maxsplit=1)[0]
             ref_value = "/".join(git_ref.split("/")[1:])
@@ -192,6 +189,9 @@ class _Project:
             )
             if workflow.permissions.to_access_controls():
                 self._create_workflow_permissions(stack, workflow, job)
+        for stack in stacks:
+            stack_aspects = Aspects.of(stack)
+            stack_aspects.add(LocalModeVisitor())
 
 
 class Stage(Enum):
@@ -228,7 +228,7 @@ class Project:
 
     def __post_init__(self) -> None:
         self._mode = Stage[
-            config(BrickFlowEnvVars.BRICKFLOW_MODE.value, default=Stage.execute.value)
+            config(BrickflowEnvVars.BRICKFLOW_MODE.value, default=Stage.execute.value)
         ]
         self.entry_point_path = self.entry_point_path or get_caller_info()
 
@@ -243,13 +243,13 @@ class Project:
                 self.git_reference if self.git_reference is not None else ""
             )
         self.git_reference = config(
-            BrickFlowEnvVars.BRICKFLOW_GIT_REF.value, default=git_ref_default
+            BrickflowEnvVars.BRICKFLOW_GIT_REF.value, default=git_ref_default
         )
         self.provider = config(
-            BrickFlowEnvVars.BRICKFLOW_GIT_PROVIDER.value, default=self.provider
+            BrickflowEnvVars.BRICKFLOW_GIT_PROVIDER.value, default=self.provider
         )
         self.git_repo = config(
-            BrickFlowEnvVars.BRICKFLOW_GIT_REPO.value, default=self.git_repo
+            BrickflowEnvVars.BRICKFLOW_GIT_REPO.value, default=self.git_repo
         )
 
     def __enter__(self) -> "_Project":
