@@ -36,6 +36,11 @@ deploy-docs:
 	@poetry run mkdocs gh-deploy --force
 
 docker:
+	docker buildx use xplatform \
+ 	&& docker buildx build --platform linux/amd64,linux/arm64 -t stikkireddy/brickflow-build:latest --push . \
+ 	&& docker buildx imagetools inspect stikkireddy/brickflow-build:latest
+
+docker-local:
 	docker build -t brickflow:latest --build-arg CACHEBUST="$(shell date +%s)" .
 
 poetry-install:

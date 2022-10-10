@@ -248,37 +248,49 @@ class Context:
         for c in callables:
             try:
                 return c()
-            except ImportError:
-                pass
+            except (ImportError, AttributeError, KeyError):
+                if hasattr(c, "__name__"):
+                    log.info("Skipping execution of function: %s", c.__name__)
         return None
 
     def _set_spark_session(self) -> None:
-        def __try_ipython_notebook() -> None:
+        def __try_spark_from_ipython_notebook() -> None:
             import IPython  # noqa
 
-            self._spark = IPython.get_ipython().user_ns["spark"]
+            self._spark = IPython.get_ipython().user_ns.get("spark", None)
+            if self._spark is None:
+                raise AttributeError("spark is not set")
 
-        def __try_spark_session() -> None:
+        def __try_spark_from_spark_session() -> None:
             from pyspark.sql import SparkSession  # noqa
 
             self._spark = SparkSession.getActiveSession()
 
-        self._try_import_chaining([__try_ipython_notebook, __try_spark_session])
+        self._try_import_chaining(
+            [__try_spark_from_ipython_notebook, __try_spark_from_spark_session]
+        )
+        log.info("Spark Session object: ctx.spark is set to: %s", self.spark)
 
     def _configure_dbutils(self) -> ContextMode:
-        def __try_ipython_notebook() -> ContextMode:
+        def __try_dbutils_from_ipython_notebook() -> ContextMode:
             import IPython  # noqa
 
             self._dbutils = IPython.get_ipython().user_ns.get("dbutils")
+            if self._dbutils is None:
+                raise AttributeError("dbutils is not set")
             return ContextMode.databricks
 
-        def __try_db_connect_jar() -> None:
+        def __try_dbutils_from_db_connect_jar() -> None:
             from pyspark.dbutils import DBUtils  # noqa
 
             self._dbutils = DBUtils(self.spark)
             # cant gaurantee databricks
 
-        resp = self._try_import_chaining([__try_ipython_notebook, __try_db_connect_jar])
+        resp = self._try_import_chaining(
+            [__try_dbutils_from_ipython_notebook, __try_dbutils_from_db_connect_jar]
+        )
+
+        log.info("DBUtils object: ctx.dbutils is set to: %s", self.dbutils)
 
         if resp is not None:
             return ContextMode.databricks

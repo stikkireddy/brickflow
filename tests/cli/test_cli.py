@@ -140,7 +140,7 @@ class TestCli:
         browser.return_value = None
         result = runner.invoke(cli, ["docs"])  # noqa
         assert result.exit_code == 0, traceback.print_exception(*result.exc_info)
-        assert result.output.strip().endswith("Opening browser for docs...")
+        assert result.output.strip().startswith("Opening browser for docs...")
         browser.assert_called_once_with(
             "https://stikkireddy.github.io/brickflow/", new=2
         )

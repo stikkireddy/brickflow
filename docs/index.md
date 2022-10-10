@@ -24,8 +24,8 @@ BrickFlow is a CLI tool for development and deployment of Python based Databrick
 - [x] Notebook Tasks
 - [ ] Serverless Sql Tasks
 - [ ] DLT Pipeline Tasks
-- [ ] Support for Job Clusters
-- [ ] Support for Look Up Clusters
+- [x] Support for Job Clusters
+- [ ] Support for Look Up Clusters (given a cluster name auto fetch the id)
 - [ ] Support for Warehouses
 - [ ] Support for using existing warehouses
 - [ ] CLI for initializing repo to setup entry points and required files
