@@ -66,7 +66,8 @@ def with_brickflow_logger(f: Callable) -> Callable:
         # First, generic formatter:
         logger_handler.setFormatter(
             logging.Formatter(
-                f"[%(asctime)s] [%(levelname)s] [brickflow:{_self.name}] {{%(module)s.py:%(lineno)d}} - %(message)s"
+                f"[%(asctime)s] [%(levelname)s] [brickflow:{_self.name}] "
+                "{%(module)s.py:%(funcName)s:%(lineno)d} - %(message)s"
             )
         )
         resp = f(*args, **kwargs)

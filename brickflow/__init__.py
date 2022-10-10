@@ -7,7 +7,7 @@ def setup_logger():
     logger_handler = logging.StreamHandler()
     logger_handler.setFormatter(
         logging.Formatter(
-            "[%(asctime)s] [%(levelname)s] [brickflow-framework] {%(module)s.py:%(lineno)d} - %(message)s"
+            "[%(asctime)s] [%(levelname)s] [brickflow-framework] {%(module)s.py:%(funcName)s:%(lineno)d} - %(message)s"
         )
     )
     _log.addHandler(logger_handler)
