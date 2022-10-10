@@ -1,6 +1,7 @@
 import importlib
 import os
 import re
+import sys
 from pathlib import Path
 
 import click
@@ -59,6 +60,7 @@ def _update_gitignore() -> None:
 def _validate_package(folder_path: str) -> str:
     if folder_path is None:
         raise ImportError(f"Invalid pkg error: {str(folder_path)}")
+    sys.path.append(os.getcwd())
     folder_pkg_path = folder_path.replace("/", ".")
     for module in os.listdir(Path(folder_path).absolute()):
         # only find python files and ignore __init__.py

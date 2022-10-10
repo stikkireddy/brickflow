@@ -98,6 +98,19 @@ class TestProject:
         ) as f:
             f.add_workflow(wf)
 
+    @mock.patch.dict(
+        os.environ, {BrickFlowEnvVars.BRICKFLOW_MODE.value: Stage.deploy.value}
+    )
+    @patch("subprocess.check_output")
+    @patch("brickflow.context.ctx.dbutils_widget_get_or_else")
+    def test_project_workflow_deploy_batch_false(
+        self, dbutils: Mock, sub_proc_mock: Mock
+    ):
+        dbutils.return_value = None
+        sub_proc_mock.return_value = b""
+        with Project("test-project", batch=False) as f:
+            f.add_workflow(wf)
+
     @patch("brickflow.context.ctx.dbutils_widget_get_or_else")
     def test_adding_pkg(self, dbutils):
         import sample_workflows

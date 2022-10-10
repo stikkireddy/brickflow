@@ -46,6 +46,7 @@ class _Project:
     entry_point_path: Optional[str] = None
     workflows: Dict[str, Workflow] = field(default_factory=lambda: {})
     libraries: Optional[List[TaskLibrary]] = None
+    batch: bool = True
 
     def add_pkg(self, pkg: ModuleType) -> None:
         file_name = pkg.__file__
@@ -156,12 +157,21 @@ class _Project:
             JobGitSource,
         )
 
-        for workflow_name, workflow in self.workflows.items():
-            stack = TerraformStack(app, f"{id_}_{workflow_name}")
+        stack = None
+        if self.batch is True:
+            stack = TerraformStack(app, id_)
             DatabricksProvider(
                 stack,
                 "Databricks",
             )
+
+        for workflow_name, workflow in self.workflows.items():
+            if self.batch is False:
+                stack = TerraformStack(app, f"{id_}_{workflow_name}")
+                DatabricksProvider(
+                    stack,
+                    "Databricks",
+                )
             git_ref = self.git_reference or ""
             ref_type = git_ref.split("/", maxsplit=1)[0]
             ref_value = "/".join(git_ref.split("/")[1:])
@@ -212,6 +222,7 @@ class Project:
     s3_backend: Optional[str] = None
     entry_point_path: Optional[str] = None
     mode: Optional[str] = None
+    batch: bool = True
 
     _project: _Project = field(init=False)
 
@@ -249,6 +260,7 @@ class Project:
             self.s3_backend,
             self.entry_point_path,
             libraries=self.libraries or [],
+            batch=self.batch,
         )
         return self._project
 

@@ -140,11 +140,17 @@ class TestContext:
         dbutils_class_mock = Mock()
         pyspark = Mock()
         pyspark_dbutils = Mock()
+        ipython_mock = Mock()
+        ipython_get_mock = Mock()
+        ipython_mock.get_ipython = ipython_get_mock
+        ipython_get_mock.user_ns.get.return_value = Mock()
         sys.modules["pyspark"] = pyspark
+        sys.modules["IPython"] = ipython_mock
         sys.modules["pyspark.dbutils"] = pyspark_dbutils
         sys.modules["pyspark.dbutils.DBUtils"] = dbutils_class_mock
         assert ctx._configure_dbutils() == ContextMode.databricks
         sys.modules.pop("pyspark")
+        sys.modules.pop("IPython")
         sys.modules.pop("pyspark.dbutils")
         sys.modules.pop("pyspark.dbutils.DBUtils")
 

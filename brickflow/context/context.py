@@ -4,9 +4,7 @@ import functools
 import pickle
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional, Any, Union, Callable, Hashable, Dict
-
-import attr
+from typing import Optional, Any, Union, Callable, Hashable, Dict, List
 
 BRANCH_SKIP_EXCEPT = "branch_skip_except"
 SKIP_EXCEPT_HACK = "brickflow_hack_skip_all"
@@ -63,7 +61,7 @@ class BrickflowTaskComsObject:
     class _TaskComsObject:
         value: Hashable
 
-    _value: Any = attr.field(on_setattr=attr.setters.frozen)
+    _value: Any = None
     _task_coms_obj: _TaskComsObject = field(init=False)
 
     def __post_init__(self) -> None:
@@ -239,24 +237,46 @@ class Context:
             # todo: log error
             return debug
 
+    def _try_import_chaining(self, callables: List[Callable]) -> Optional[Any]:
+        for c in callables:
+            try:
+                return c()
+            except ImportError:
+                pass
+        return None
+
     def _set_spark_session(self) -> None:
-        try:
-            from pyspark.sql import SparkSession
+        def __try_ipython_notebook() -> None:
+            import IPython  # noqa
+
+            self._spark = IPython.get_ipython().user_ns["spark"]
+
+        def __try_spark_session() -> None:
+            from pyspark.sql import SparkSession  # noqa
 
             self._spark = SparkSession.getActiveSession()
-        except ImportError:
-            # todo: log error
-            pass
+
+        self._try_import_chaining([__try_ipython_notebook, __try_spark_session])
 
     def _configure_dbutils(self) -> ContextMode:
-        try:
-            from pyspark.dbutils import DBUtils
+        def __try_ipython_notebook() -> ContextMode:
+            import IPython  # noqa
+
+            self._dbutils = IPython.get_ipython().user_ns.get("dbutils")
+            return ContextMode.databricks
+
+        def __try_db_connect_jar() -> None:
+            from pyspark.dbutils import DBUtils  # noqa
 
             self._dbutils = DBUtils(self.spark)
+            # cant gaurantee databricks
+
+        resp = self._try_import_chaining([__try_ipython_notebook, __try_db_connect_jar])
+
+        if resp is not None:
             return ContextMode.databricks
-        except ImportError:
-            # todo: log error
-            return ContextMode.not_databricks
+
+        return ContextMode.not_databricks
 
 
 ctx = Context()

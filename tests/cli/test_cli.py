@@ -1,5 +1,6 @@
 import os
 import subprocess
+import traceback
 from pathlib import Path
 from unittest.mock import patch, Mock
 
@@ -73,47 +74,56 @@ class TestCli:
             "a .gitignore file in the root directory."
         )
 
+    @patch("os.path")
     @patch("os.environ.copy", wraps=os.environ.copy)
     @patch("subprocess.run")
-    def test_cdktf(self, run_mock: Mock, os_environ_mock: Mock):
+    def test_cdktf(self, run_mock: Mock, os_environ_mock: Mock, path_mock: Mock):
         runner = CliRunner()
         run_mock.side_effect = fake_run
+        path_mock.exists.return_value = True
+        path_mock.isdir.return_value = True
         result = runner.invoke(cli, ["cdktf", "help"])  # noqa
+        assert result.exit_code == 0, traceback.print_exception(*result.exc_info)
+        assert result.output.strip() == "hello world"
         run_mock.assert_called_once_with(
             ["cdktf", "help"], check=True, env=os.environ.copy()
         )
         os_environ_mock.assert_called()
-        assert result.exit_code == 0
-        assert result.output.strip() == "hello world"
 
+    @patch("os.path")
     @patch("os.environ.copy", wraps=os.environ.copy)
     @patch("subprocess.run")
-    def test_deploy(self, run_mock: Mock, os_environ_mock: Mock):
+    def test_deploy(self, run_mock: Mock, os_environ_mock: Mock, path_mock: Mock):
         runner = CliRunner()
         run_mock.side_effect = fake_run
+        path_mock.exists.return_value = True
+        path_mock.isdir.return_value = True
         result = runner.invoke(cli, ["diff"])  # noqa
+        assert result.exit_code == 0, traceback.print_exception(*result.exc_info)
+        assert result.output.strip() == "hello world"
         run_mock.assert_called_once_with(
             ["cdktf", "diff"], check=True, env=os.environ.copy()
         )
         os_environ_mock.assert_called()
-        assert result.exit_code == 0
-        assert result.output.strip() == "hello world"
 
+    @patch("os.path")
     @patch("os.environ.copy", wraps=os.environ.copy)
     @patch("subprocess.run")
-    def test_cdktf_error(self, run_mock: Mock, os_environ_mock: Mock):
+    def test_cdktf_error(self, run_mock: Mock, os_environ_mock: Mock, path_mock: Mock):
         runner = CliRunner()
         run_mock.side_effect = fake_run_with_error
+        path_mock.exists.return_value = True
+        path_mock.isdir.return_value = True
         result = runner.invoke(cli, ["cdktf", "help"])  # noqa
-        run_mock.assert_called_once_with(
-            ["cdktf", "help"], check=True, env=os.environ.copy()
-        )
-        os_environ_mock.assert_called()
-        assert result.exit_code == 1
+        assert result.exit_code == 1, traceback.print_exception(*result.exc_info)
         assert (
             result.output.strip()
             == "Error: Command 'cdktf help' returned non-zero exit status 127."
         )
+        run_mock.assert_called_once_with(
+            ["cdktf", "help"], check=True, env=os.environ.copy()
+        )
+        os_environ_mock.assert_called()
 
     def test_no_command_error(self):
         runner = CliRunner()
@@ -129,8 +139,8 @@ class TestCli:
         runner = CliRunner()
         browser.return_value = None
         result = runner.invoke(cli, ["docs"])  # noqa
-        browser.assert_called_once_with(
-            "https://github.com/stikkireddy/brickflow", new=2
-        )
-        assert result.exit_code == 0
+        assert result.exit_code == 0, traceback.print_exception(*result.exc_info)
         assert result.output.strip().endswith("Opening browser for docs...")
+        browser.assert_called_once_with(
+            "https://stikkireddy.github.io/brickflow/", new=2
+        )

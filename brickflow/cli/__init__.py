@@ -29,6 +29,9 @@ def cdktf_command(base_command: Optional[str] = None) -> click.Command:
     )
     @click.argument("args", nargs=-1)
     def cmd(args: Tuple[str]) -> None:
+        # check to make sure you are in project root and then set python path to whole dir
+        _check_git_dir()
+        os.environ["PYTHONPATH"] = os.getcwd()
         my_env = os.environ.copy()
         try:
             _args = list(args)
@@ -55,7 +58,7 @@ class CdktfCmd(click.Group):
             raise ctx.fail(f"No such command '{cmd_name}'.")
 
 
-@click.group(invoke_without_command=True,no_args_is_help=True, cls=CdktfCmd)
+@click.group(invoke_without_command=True, no_args_is_help=True, cls=CdktfCmd)
 @click.version_option(prog_name="brickflow")
 def cli() -> None:
     """CLI for managing Databricks Workflows"""
