@@ -54,7 +54,7 @@ def with_brickflow_logger(f: Callable) -> Callable:
     @functools.wraps(f)
     def func(*args, **kwargs):  # type: ignore
         _self = args[0]
-        logger = logging.getLogger()  # Logger
+        logger = logging.getLogger(__name__)  # Logger
         logger.setLevel(logging.INFO)
         back_up_logging_handlers = logger.handlers
         logger.handlers = []
