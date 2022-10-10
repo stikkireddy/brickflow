@@ -102,8 +102,9 @@ def init(project_name: str, git_provider: str, workflows_dir: str) -> None:
 @cli.command
 def docs() -> None:
     """Use to open docs in your browser..."""
-    webbrowser.open("https://stikkireddy.github.io/brickflow/", new=2)
-    click.echo("Opening browser for docs...")
+    docs_site = "https://stikkireddy.github.io/brickflow/"
+    webbrowser.open(docs_site, new=2)
+    click.echo(f"Opening browser for docs... site: {docs_site}")
 
 
 @cli.command

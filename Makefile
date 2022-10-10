@@ -36,7 +36,7 @@ deploy-docs:
 	@poetry run mkdocs gh-deploy --force
 
 docker:
-	docker build -t brickflow:latest .
+	docker build -t brickflow:latest --build-arg CACHEBUST="$(shell date +%s)" .
 
 poetry-install:
 	@pip install poetry
