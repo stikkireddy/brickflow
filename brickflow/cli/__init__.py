@@ -1,12 +1,15 @@
+from __future__ import annotations
+
 import os
 import os.path
 import subprocess
 import webbrowser
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Callable, Union, List, Any
 
 import click
 from click import ClickException
 
+from brickflow import log
 from brickflow.cli.configure import (
     _check_git_dir,
     _gitignore_exists,
@@ -16,8 +19,25 @@ from brickflow.cli.configure import (
     GitNotFoundError,
     render_template,
     create_entry_point,
+    idempotent_cdktf_out,
 )
-from brickflow.engine import get_git_remote_url_https
+from brickflow.engine import get_git_remote_url_https, BrickflowEnvVars
+
+
+def exec_cdktf_command(
+    base_command: Optional[str], args: Union[Tuple[str] | List[str]]
+) -> None:
+    _check_git_dir()
+    os.environ["PYTHONPATH"] = os.getcwd()
+    my_env = os.environ.copy()
+    try:
+        _args = list(args)
+        # add a base command if its provided for proxying for brickflow deploy
+        if base_command is not None:
+            _args = [base_command] + _args
+        subprocess.run(["cdktf", *_args], check=True, env=my_env)
+    except subprocess.CalledProcessError as e:
+        raise ClickException(str(e))
 
 
 def cdktf_command(base_command: Optional[str] = None) -> click.Command:
@@ -30,17 +50,7 @@ def cdktf_command(base_command: Optional[str] = None) -> click.Command:
     @click.argument("args", nargs=-1)
     def cmd(args: Tuple[str]) -> None:
         # check to make sure you are in project root and then set python path to whole dir
-        _check_git_dir()
-        os.environ["PYTHONPATH"] = os.getcwd()
-        my_env = os.environ.copy()
-        try:
-            _args = list(args)
-            # add a base command if its provided for proxying for brickflow deploy
-            if base_command is not None:
-                _args = [base_command] + _args
-            subprocess.run(["cdktf", *_args], check=True, env=my_env)
-        except subprocess.CalledProcessError as e:
-            raise ClickException(str(e))
+        exec_cdktf_command(base_command, args)
 
     return cmd
 
@@ -49,8 +59,8 @@ class CdktfCmd(click.Group):
     def get_command(self, ctx: click.Context, cmd_name: str) -> Optional[click.Command]:
         if cmd_name == "cdktf":
             return cdktf_command()
-        elif cmd_name in ["deploy", "diff"]:
-            return cdktf_command(cmd_name)
+        # elif cmd_name in ["deploy", "diff"]:
+        #     return cdktf_command(cmd_name)
         else:
             rv = click.Group.get_command(self, ctx, cmd_name)
             if rv is not None:
@@ -67,10 +77,18 @@ def cli() -> None:
 @cli.command
 @click.option("-n", "--project-name", type=str, prompt=True)
 @click.option(
-    "-p", "--git-provider", type=click.Choice(["github", "gitlab"]), prompt=True
+    "-p",
+    "--git-provider",
+    type=click.Choice(["github", "gitlab"]),
+    default="github",
+    prompt=True,
 )
 @click.option(
-    "-w", "--workflows-dir", type=click.Path(exists=True, file_okay=False), prompt=True
+    "-w",
+    "--workflows-dir",
+    default="src/workflows",
+    type=click.Path(exists=True, file_okay=False),
+    prompt=True,
 )
 def init(project_name: str, git_provider: str, workflows_dir: str) -> None:
     """Initialize your project with Brickflows..."""
@@ -89,6 +107,7 @@ def init(project_name: str, git_provider: str, workflows_dir: str) -> None:
                 pkg=_validate_package(workflows_dir),
             ),
         )
+        idempotent_cdktf_out(workflows_dir)
     except GitNotFoundError:
         raise ClickException(
             "Please make sure you are in the root directory of your project with git initialized."
@@ -115,17 +134,79 @@ def cdktf() -> None:
     pass  # pragma: no cover
 
 
-@cli.command
-def deploy() -> None:
-    """CLI for deploying workflow projects."""
-    # Hack for having cdktf show up as a command in brickflow
-    # with documentation.
-    pass  # pragma: no cover
+def cdktf_env_set_options(f: Callable) -> Callable:
+    def bind_env_var(env_var: str) -> Callable:
+        def callback(ctx: click.Context, param: str, value: Any) -> None:  # NOQA
+            if value is not None:
+                log.info("Setting env var: %s to %s...", env_var, value)
+                os.environ[env_var] = (
+                    str(value).lower() if isinstance(value, bool) else value
+                )
+
+        return callback
+
+    options = [
+        click.option(
+            "--local-mode",
+            "-l",
+            is_flag=True,
+            default=True,
+            callback=bind_env_var(BrickflowEnvVars.BRICKFLOW_LOCAL_MODE.value),
+            help="TBD.",
+        ),
+        click.option(
+            "--repo-url",
+            "-r",
+            default=None,
+            type=str,
+            callback=bind_env_var(BrickflowEnvVars.BRICKFLOW_GIT_REPO.value),
+            help="TBD.",
+        ),
+        click.option(
+            "--git-ref",
+            default=None,
+            type=str,
+            callback=bind_env_var(BrickflowEnvVars.BRICKFLOW_GIT_REF.value),
+            help="TBD.",
+        ),
+        click.option(
+            "--git-provider",
+            default=None,
+            type=str,
+            callback=bind_env_var(BrickflowEnvVars.BRICKFLOW_GIT_PROVIDER.value),
+            help="TBD.",
+        ),
+        click.option(
+            "--profile",
+            "-p",
+            default=None,
+            type=str,
+            callback=bind_env_var(
+                BrickflowEnvVars.BRICKFLOW_DATABRICKS_CONFIG_PROFILE.value
+            ),
+            help="TBD.",
+        ),
+    ]
+    for option in options:
+        f = option(f)
+    return f
 
 
 @cli.command
-def diff() -> None:
+@cdktf_env_set_options
+def deploy(**_: Any) -> None:
     """CLI for deploying workflow projects."""
     # Hack for having cdktf show up as a command in brickflow
     # with documentation.
-    pass  # pragma: no cover
+    exec_cdktf_command("deploy", [])
+    # pass  # pragma: no cover
+
+
+@cli.command
+@cdktf_env_set_options
+def diff(**_: Any) -> None:
+    """CLI for deploying workflow projects."""
+    # Hack for having cdktf show up as a command in brickflow
+    # with documentation.
+    exec_cdktf_command("diff", [])
+    # pass  # pragma: no cover

@@ -1,11 +1,15 @@
 import importlib
+import json
 import os
 import re
 import sys
 from pathlib import Path
+from typing import Optional, Dict
 
 import click
 from jinja2 import Environment, BaseLoader
+
+from brickflow import log
 
 
 class GitNotFoundError(Exception):
@@ -89,3 +93,39 @@ def create_entry_point(working_dir: str, data: str) -> None:
     click.echo(f"Creating file in path: {str(path.absolute())}...")
     with path.open("w") as f:
         f.write(data)
+
+
+def _cdktf_json_exists() -> bool:
+    return os.path.exists("cdktf.json") and os.path.isfile("cdktf.json")
+
+
+def _get_cdktf_dict() -> Dict[str, str]:
+    with open("cdktf.json", "r", encoding="utf-8") as f:
+        return json.loads(f.read())
+
+
+def _merge_cdktf_json(
+    other_dict: Optional[Dict[str, str]], working_dir: str
+) -> Dict[str, str]:
+    _other_dict = other_dict or {}
+    possible_other_app = _other_dict.get("app", None)
+    new_entrypoint_app = f"BRICKFLOW_MODE=deploy python {working_dir}/entrypoint.py"
+    if possible_other_app is not None and new_entrypoint_app != possible_other_app:
+        log.info(
+            "Found other app configuration in cdktf.json: %s ... and it is different.",
+            possible_other_app,
+        )
+    app_bck = {} if possible_other_app is None else {"app_bck": possible_other_app}
+    app_dict = {"app": new_entrypoint_app}
+    return {**_other_dict, **{"language": "python"}, **app_bck, **app_dict}
+
+
+def _write_cdktf_json(content: Dict[str, str]) -> None:
+    with open("cdktf.json", "w", encoding="utf-8") as f:
+        f.write(json.dumps(content, indent=4))
+
+
+def idempotent_cdktf_out(working_dir: str) -> None:
+    cdktf_dict = _get_cdktf_dict() if _cdktf_json_exists() is True else {}
+    content = _merge_cdktf_json(cdktf_dict, working_dir)
+    _write_cdktf_json(content)

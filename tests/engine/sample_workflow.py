@@ -5,6 +5,7 @@ from brickflow.engine.workflow import Workflow, WorkflowPermissions, User
 wf = Workflow(
     "test",
     default_cluster=Cluster.from_existing_cluster("existing_cluster_id"),
+    schedule_quartz_expression="* * * * *",
     permissions=WorkflowPermissions(
         owner=User("abc@abc.com"),
         can_manage_run=[User("abc@abc.com")],

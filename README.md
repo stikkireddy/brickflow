@@ -20,3 +20,6 @@
              alt="We use black for formatting"/>
     </a>
 </p>
+
+### Documentation
+Brickflow documentation can be found [here](https://stikkireddy.github.io/brickflow/)

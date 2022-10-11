@@ -41,7 +41,8 @@ class TestCli:
         result = runner.invoke(
             cli, ["init", "-n", "test-proj", "-p", "github", "-w", str(test_dir)]
         )  # noqa
-        assert result.exit_code == 0, result.output
+        assert result.exit_code == 0, traceback.print_exception(*result.exc_info)
+        # result.output
 
     def test_init_no_git_error(self, tmp_path):
         test_dir = Path(tmp_path) / "test"
@@ -93,12 +94,12 @@ class TestCli:
     @patch("os.path")
     @patch("os.environ.copy", wraps=os.environ.copy)
     @patch("subprocess.run")
-    def test_deploy(self, run_mock: Mock, os_environ_mock: Mock, path_mock: Mock):
+    def test_diff(self, run_mock: Mock, os_environ_mock: Mock, path_mock: Mock):
         runner = CliRunner()
         run_mock.side_effect = fake_run
         path_mock.exists.return_value = True
         path_mock.isdir.return_value = True
-        result = runner.invoke(cli, ["diff"])  # noqa
+        result = runner.invoke(cli, ["cdktf", "diff"])  # noqa
         assert result.exit_code == 0, traceback.print_exception(*result.exc_info)
         assert result.output.strip() == "hello world"
         run_mock.assert_called_once_with(
