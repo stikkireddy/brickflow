@@ -84,7 +84,11 @@ def cli() -> None:
     prompt=True,
 )
 @click.option(
-    "-w", "--workflows-dir", type=click.Path(exists=True, file_okay=False), prompt=True
+    "-w",
+    "--workflows-dir",
+    default="src/workflows",
+    type=click.Path(exists=True, file_okay=False),
+    prompt=True,
 )
 def init(project_name: str, git_provider: str, workflows_dir: str) -> None:
     """Initialize your project with Brickflows..."""
