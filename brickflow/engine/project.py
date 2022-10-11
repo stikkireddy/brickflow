@@ -31,6 +31,7 @@ class GitRepoIsDirtyError(Exception):
 # TODO: Logging
 @dataclass(frozen=True)
 class _Project:
+    name: str
     git_repo: Optional[str] = None
     provider: Optional[str] = None
     git_reference: Optional[str] = None
@@ -70,6 +71,19 @@ class _Project:
     @wraps_keyerror(WorkflowNotFoundError, "Unable to find workflow: ")
     def get_workflow(self, workflow_id: str) -> Optional[Workflow]:
         return self.workflows[workflow_id]
+
+    def _create_workflow_schedule(self, workflow: Workflow) -> "JobSchedule":  # type: ignore  # noqa
+        # Avoid node reqs
+        from brickflow.tf.databricks import (
+            JobSchedule,
+        )
+
+        if workflow.schedule_quartz_expression is not None:
+            return JobSchedule(
+                quartz_cron_expression=workflow.schedule_quartz_expression,
+                timezone_id=workflow.timezone,
+            )
+        return None
 
     # TODO: test terraform objects
     def _create_workflow_tasks(self, workflow: Workflow) -> List["JobTask"]:  # type: ignore  # noqa
@@ -185,13 +199,14 @@ class _Project:
                 git_source=git_conf,
                 tags=workflow.tags,
                 job_cluster=workflow_clusters,
+                schedule=self._create_workflow_schedule(workflow),
                 max_concurrent_runs=workflow.max_concurrent_runs,
             )
             if workflow.permissions.to_access_controls():
                 self._create_workflow_permissions(stack, workflow, job)
         for stack in stacks:
             stack_aspects = Aspects.of(stack)
-            stack_aspects.add(LocalModeVisitor())
+            stack_aspects.add(LocalModeVisitor(self))
 
 
 class Stage(Enum):
@@ -254,6 +269,7 @@ class Project:
 
     def __enter__(self) -> "_Project":
         self._project = _Project(
+            self.name,
             self.git_repo,
             self.provider,
             self.git_reference,

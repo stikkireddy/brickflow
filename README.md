@@ -22,4 +22,4 @@
 </p>
 
 ### Documentation
-Brickflow documentation can be found [here](https://verbose-garbanzo-6b8a1ae2.pages.github.io/)
+Brickflow documentation can be found [here](https://stikkireddy.github.io/brickflow/)

@@ -83,6 +83,8 @@ class WorkflowPermissions:
 class Workflow:
     # name should be immutable and not modified after being set
     _name: str
+    schedule_quartz_expression: Optional[str] = None
+    timezone: str = "UTC"
     default_cluster: Optional[Cluster] = None
     clusters: List[Cluster] = field(default_factory=lambda: [])
     default_task_settings: TaskSettings = TaskSettings()

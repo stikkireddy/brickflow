@@ -3,6 +3,7 @@ from __future__ import annotations
 import functools
 import logging
 import subprocess
+import sys
 from enum import Enum
 from typing import Callable, Optional
 
@@ -16,6 +17,7 @@ class BrickflowEnvVars(Enum):
     BRICKFLOW_GIT_REF = "BRICKFLOW_GIT_REF"
     BRICKFLOW_GIT_PROVIDER = "BRICKFLOW_GIT_PROVIDER"
     BRICKFLOW_LOCAL_MODE = "BRICKFLOW_LOCAL_MODE"
+    BRICKFLOW_DATABRICKS_CONFIG_PROFILE = "DATABRICKS_CONFIG_PROFILE"
 
 
 def _call(cmd: str, **kwargs: bool) -> bytes:
@@ -70,7 +72,9 @@ def with_brickflow_logger(f: Callable) -> Callable:
         logger.setLevel(logging.INFO)
         back_up_logging_handlers = logger.handlers
         logger.handlers = []
-        logger_handler = logging.StreamHandler()  # Handler for the logger
+        logger_handler = logging.StreamHandler(
+            stream=sys.stdout
+        )  # Handler for the logger
         logger.addHandler(logger_handler)
 
         # First, generic formatter:

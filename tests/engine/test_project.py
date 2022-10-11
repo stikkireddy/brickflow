@@ -5,6 +5,7 @@ from unittest.mock import Mock, call, patch
 import pytest
 
 from brickflow.context import ctx, BrickflowInternalVariables
+from brickflow.engine.compute import Cluster
 from brickflow.engine.project import (
     Project,
     Stage,
@@ -13,6 +14,7 @@ from brickflow.engine.project import (
     get_caller_info,
 )
 from brickflow.engine import BrickflowEnvVars
+from brickflow.engine.workflow import Workflow
 from tests.engine.sample_workflow import wf, task_function
 
 
@@ -97,6 +99,48 @@ class TestProject:
             "test-project",
         ) as f:
             f.add_workflow(wf)
+
+    @mock.patch.dict(
+        os.environ, {BrickflowEnvVars.BRICKFLOW_MODE.value: Stage.deploy.value}
+    )
+    @patch("subprocess.check_output")
+    @patch("brickflow.context.ctx.dbutils_widget_get_or_else")
+    def test_project_deploy_workflow_no_schedule(self, dbutils: Mock, subproc: Mock):
+        dbutils.return_value = None
+
+        with Project(
+            "test-project",
+        ) as f:
+            f.add_workflow(
+                Workflow(
+                    "my-workflow",
+                    default_cluster=Cluster.from_existing_cluster("someid"),
+                )
+            )
+        subproc.assert_called()
+
+    @mock.patch.dict(
+        os.environ,
+        {
+            BrickflowEnvVars.BRICKFLOW_MODE.value: Stage.deploy.value,
+            BrickflowEnvVars.BRICKFLOW_LOCAL_MODE.value: "true",
+        },
+    )
+    @patch("subprocess.check_output")
+    @patch("brickflow.context.ctx.dbutils_widget_get_or_else")
+    def test_project_deploy_local_mode(self, dbutils: Mock, subproc: Mock):
+        dbutils.return_value = None
+
+        with Project(
+            "test-project",
+        ) as f:
+            f.add_workflow(
+                Workflow(
+                    "my-workflow",
+                    default_cluster=Cluster.from_existing_cluster("someid"),
+                )
+            )
+        subproc.assert_called()
 
     @mock.patch.dict(
         os.environ, {BrickflowEnvVars.BRICKFLOW_MODE.value: Stage.deploy.value}

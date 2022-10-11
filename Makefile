@@ -23,6 +23,9 @@ test:
 	poetry run coverage report -m && \
 	poetry run coverage html
 
+build:
+	@poetry build
+
 poetry:
 	@poetry lock
 	@poetry install --with dev
@@ -44,8 +47,6 @@ docker-local:
 	docker build -t brickflow:latest --build-arg CACHEBUST="$(shell date +%s)" .
 
 poetry-install:
-	@pip install poetry
-	@poetry self add "poetry-dynamic-versioning[plugin]"
-
+	@pip install --upgrade setuptools && pip install poetry && poetry self add "poetry-dynamic-versioning[plugin]"
 
 .PHONY: docs
